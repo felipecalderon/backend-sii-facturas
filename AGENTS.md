@@ -25,6 +25,7 @@ Antes de implementar:
 3. Reutilizar abstracciones y dependencias existentes cuando corresponda, evitando crear patrones paralelos.
 4. Realizar únicamente los cambios necesarios para cumplir la tarea.
 5. No realizar refactors ni mejoras no relacionadas con la solicitud.
+6. Si no estás seguro como implementar o usar alguna librería, puedes leer su documentación en /node_modules
 
 ## Incertidumbre
 
