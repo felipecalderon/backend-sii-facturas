@@ -15,7 +15,7 @@ describe('TedSigner', () => {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 1024,
     publicKeyEncoding: { type: 'spki', format: 'pem' },
-    privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs1', format: 'pem' }
   });
 
   const createTestCaf = (): Caf =>
@@ -25,10 +25,11 @@ describe('TedSigner', () => {
       rangoDesde: 1,
       rangoHasta: 100,
       clavePrivadaPem: privateKey,
-      cafXml: '<CAF version="1.0"><DA><RE>76123456-0</RE></DA><FRMA>firma</FRMA></CAF>',
+      cafXml:
+        '<CAF version="1.0"><DA><RE>76123456-0</RE></DA><FRMA>firma</FRMA></CAF>',
       fechaAutorizacion: new Date('2026-09-03'),
       rutEmisor: Rut.of('76123456-0'),
-      activo: true,
+      activo: true
     });
 
   const createTestInvoice = (): Invoice => {
@@ -41,23 +42,24 @@ describe('TedSigner', () => {
         giro: 'Servicios de TI',
         actividadEconomica: 620100,
         direccion: 'Calle Test 123',
-        comuna: 'Santiago',
+        comuna: 'Santiago'
       }),
       receptor: Receiver.create({
         rut: Rut.of('6-K'),
-        razonSocial: 'Empresa Receptora Con Un Nombre Sumamente Largo Que Debe Truncarse A 40 Caracteres',
+        razonSocial:
+          'Empresa Receptora Con Un Nombre Sumamente Largo Que Debe Truncarse A 40 Caracteres',
         giro: 'Comercio',
         direccion: 'Av Test 456',
-        comuna: 'Santiago',
+        comuna: 'Santiago'
       }),
       items: [
         InvoiceItem.create({
           linea: 1,
           nombre: 'Ítem de prueba con nombre largo para verificar truncamiento',
           cantidad: Money.fromInteger(2),
-          precioUnitario: Money.fromInteger(50000),
-        }),
-      ],
+          precioUnitario: Money.fromInteger(50000)
+        })
+      ]
     });
     inv.assignFolio(42);
     return inv;
@@ -86,7 +88,10 @@ describe('TedSigner', () => {
     const ted = TedSigner.generateAndSign(invoice, caf);
 
     // Alterar un dato en el XML del TED (e.g. monto)
-    const tamperedXml = ted.rawXml.replace('<MNT>119000</MNT>', '<MNT>999999</MNT>');
+    const tamperedXml = ted.rawXml.replace(
+      '<MNT>119000</MNT>',
+      '<MNT>999999</MNT>'
+    );
 
     const isValid = TedSigner.verify(tamperedXml, publicKey);
     expect(isValid).toBe(false);

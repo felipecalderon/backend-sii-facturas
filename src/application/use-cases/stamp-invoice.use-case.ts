@@ -4,7 +4,7 @@ import { Ted } from '../../domain/dte/values/ted.vo.js';
 import { TedSigner } from '../../infrastructure/crypto/ted-signer.js';
 import {
   NoActiveCafError,
-  TenantMismatchError,
+  TenantMismatchError
 } from '../../domain/folio/errors/folio-domain.error.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 
@@ -29,13 +29,13 @@ export class StampInvoiceUseCase {
 
     if (!dto.invoice.folio) {
       throw new FiscalValidationError(
-        'La factura debe tener un folio asignado antes de poder ser timbrada',
+        'La factura debe tener un folio asignado antes de poder ser timbrada'
       );
     }
 
     const caf = await this.folioRepository.findActiveCaf(
       dto.tenantId,
-      dto.invoice.tipoDte,
+      dto.invoice.tipoDte
     );
 
     if (!caf) {
@@ -45,14 +45,14 @@ export class StampInvoiceUseCase {
     const ted = TedSigner.generateAndSign(
       dto.invoice,
       caf,
-      dto.customTimestamp,
+      dto.customTimestamp
     );
 
     dto.invoice.stampTed(ted.rawXml);
 
     return {
       invoice: dto.invoice,
-      ted,
+      ted
     };
   }
 }

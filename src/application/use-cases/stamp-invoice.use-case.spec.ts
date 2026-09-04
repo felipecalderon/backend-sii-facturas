@@ -2,7 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import crypto from 'node:crypto';
 import { StampInvoiceUseCase } from './stamp-invoice.use-case.js';
 import { FolioRepository } from '../../domain/folio/ports/folio.repository.js';
-import { Invoice, InvoiceStatus } from '../../domain/dte/entities/invoice.entity.js';
+import {
+  Invoice,
+  InvoiceStatus
+} from '../../domain/dte/entities/invoice.entity.js';
 import { Issuer } from '../../domain/dte/entities/issuer.entity.js';
 import { Receiver } from '../../domain/dte/entities/receiver.entity.js';
 import { InvoiceItem } from '../../domain/dte/entities/invoice-item.entity.js';
@@ -12,7 +15,7 @@ import { Caf } from '../../domain/folio/entities/caf.entity.js';
 import { TipoDte } from '../../domain/dte/values/dte-type.vo.js';
 import {
   NoActiveCafError,
-  TenantMismatchError,
+  TenantMismatchError
 } from '../../domain/folio/errors/folio-domain.error.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 
@@ -20,7 +23,7 @@ describe('StampInvoiceUseCase', () => {
   const { privateKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 1024,
     privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    publicKeyEncoding: { type: 'spki', format: 'pem' }
   });
 
   const createMockCaf = (): Caf =>
@@ -33,7 +36,7 @@ describe('StampInvoiceUseCase', () => {
       cafXml: '<CAF version="1.0"><DA></DA></CAF>',
       fechaAutorizacion: new Date(),
       rutEmisor: Rut.of('76123456-0'),
-      activo: true,
+      activo: true
     });
 
   const createTestInvoice = (assignFolio = true): Invoice => {
@@ -46,23 +49,23 @@ describe('StampInvoiceUseCase', () => {
         giro: 'Giro Test',
         actividadEconomica: 620100,
         direccion: 'Calle Test 1',
-        comuna: 'Santiago',
+        comuna: 'Santiago'
       }),
       receptor: Receiver.create({
         rut: Rut.of('6-K'),
         razonSocial: 'Receptor Test',
         giro: 'Comercio',
         direccion: 'Calle Test 2',
-        comuna: 'Santiago',
+        comuna: 'Santiago'
       }),
       items: [
         InvoiceItem.create({
           linea: 1,
           nombre: 'Item Test',
           cantidad: Money.fromInteger(1),
-          precioUnitario: Money.fromInteger(1000),
-        }),
-      ],
+          precioUnitario: Money.fromInteger(1000)
+        })
+      ]
     });
     if (assignFolio) {
       inv.assignFolio(10);
@@ -76,7 +79,7 @@ describe('StampInvoiceUseCase', () => {
       saveCaf: vi.fn(),
       findActiveCaf: vi.fn().mockResolvedValue(mockCaf),
       allocateNextFolio: vi.fn(),
-      getFolioStatus: vi.fn(),
+      getFolioStatus: vi.fn()
     };
 
     const useCase = new StampInvoiceUseCase(mockRepository);
@@ -84,7 +87,7 @@ describe('StampInvoiceUseCase', () => {
 
     const result = await useCase.execute({
       tenantId: 'tenant-123',
-      invoice,
+      invoice
     });
 
     expect(result.invoice.estado).toBe(InvoiceStatus.STAMPED);
@@ -98,7 +101,7 @@ describe('StampInvoiceUseCase', () => {
       saveCaf: vi.fn(),
       findActiveCaf: vi.fn(),
       allocateNextFolio: vi.fn(),
-      getFolioStatus: vi.fn(),
+      getFolioStatus: vi.fn()
     };
 
     const useCase = new StampInvoiceUseCase(mockRepository);
@@ -107,8 +110,8 @@ describe('StampInvoiceUseCase', () => {
     await expect(
       useCase.execute({
         tenantId: 'tenant-123',
-        invoice: invoiceWithoutFolio,
-      }),
+        invoice: invoiceWithoutFolio
+      })
     ).rejects.toThrow(FiscalValidationError);
   });
 
@@ -117,7 +120,7 @@ describe('StampInvoiceUseCase', () => {
       saveCaf: vi.fn(),
       findActiveCaf: vi.fn().mockResolvedValue(null),
       allocateNextFolio: vi.fn(),
-      getFolioStatus: vi.fn(),
+      getFolioStatus: vi.fn()
     };
 
     const useCase = new StampInvoiceUseCase(mockRepository);
@@ -126,8 +129,8 @@ describe('StampInvoiceUseCase', () => {
     await expect(
       useCase.execute({
         tenantId: 'tenant-123',
-        invoice,
-      }),
+        invoice
+      })
     ).rejects.toThrow(NoActiveCafError);
   });
 
@@ -136,7 +139,7 @@ describe('StampInvoiceUseCase', () => {
       saveCaf: vi.fn(),
       findActiveCaf: vi.fn(),
       allocateNextFolio: vi.fn(),
-      getFolioStatus: vi.fn(),
+      getFolioStatus: vi.fn()
     };
 
     const useCase = new StampInvoiceUseCase(mockRepository);
@@ -145,8 +148,8 @@ describe('StampInvoiceUseCase', () => {
     await expect(
       useCase.execute({
         tenantId: 'otro-tenant',
-        invoice,
-      }),
+        invoice
+      })
     ).rejects.toThrow(TenantMismatchError);
   });
 });

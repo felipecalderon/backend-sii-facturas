@@ -25,17 +25,24 @@ export class Ted {
 
   public static create(props: TedProps): Ted {
     if (!props.rawXml || !props.rawXml.includes('<TED')) {
-      throw new FiscalValidationError('El XML del TED debe contener la etiqueta <TED>');
+      throw new FiscalValidationError(
+        'El XML del TED debe contener la etiqueta <TED>'
+      );
     }
     if (!props.ddXml || !props.ddXml.includes('<DD')) {
       throw new FiscalValidationError('El nodo <DD> es obligatorio en el TED');
     }
     if (!props.signature || props.signature.trim().length === 0) {
-      throw new FiscalValidationError('La firma digital <FRMT> es obligatoria en el TED');
-    }
-    if (!props.tsted || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(props.tsted)) {
       throw new FiscalValidationError(
-        `Formato inválido de timestamp TSTED: "${props.tsted}". Debe ser YYYY-MM-DDTHH:mm:ss`,
+        'La firma digital <FRMT> es obligatoria en el TED'
+      );
+    }
+    if (
+      !props.tsted ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(props.tsted)
+    ) {
+      throw new FiscalValidationError(
+        `Formato inválido de timestamp TSTED: "${props.tsted}". Debe ser YYYY-MM-DDTHH:mm:ss`
       );
     }
 

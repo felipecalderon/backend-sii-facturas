@@ -41,6 +41,7 @@ export interface InvoiceProps {
   estado: InvoiceStatus;
   idempotencyKey?: string;
   tedXml?: string;
+  dteXml?: string;
 }
 
 export class Invoice {
@@ -54,6 +55,7 @@ export class Invoice {
   public readonly totales: InvoiceTotals;
   private _estado: InvoiceStatus;
   private _tedXml?: string;
+  private _dteXml?: string;
   public readonly idempotencyKey?: string;
 
   private constructor(props: InvoiceProps) {
@@ -67,6 +69,7 @@ export class Invoice {
     this.totales = props.totales;
     this._estado = props.estado;
     this._tedXml = props.tedXml;
+    this._dteXml = props.dteXml;
     this.idempotencyKey = props.idempotencyKey;
   }
 
@@ -137,11 +140,13 @@ export class Invoice {
   public stampTed(tedXml: string): void {
     if (this._estado !== InvoiceStatus.FOLIO_ASSIGNED) {
       throw new FiscalValidationError(
-        `No se puede timbrar una factura en estado ${this._estado}. Debe estar en FOLIO_ASSIGNED.`,
+        `No se puede timbrar una factura en estado ${this._estado}. Debe estar en FOLIO_ASSIGNED.`
       );
     }
     if (!this._folio || this._folio <= 0) {
-      throw new FiscalValidationError('No se puede timbrar una factura sin un folio asignado válido.');
+      throw new FiscalValidationError(
+        'No se puede timbrar una factura sin un folio asignado válido.'
+      );
     }
     if (!tedXml || !tedXml.includes('<TED')) {
       throw new FiscalValidationError('El XML de timbre TED es inválido.');
@@ -149,6 +154,25 @@ export class Invoice {
 
     this._tedXml = tedXml;
     this._estado = InvoiceStatus.STAMPED;
+  }
+
+  public setDteXml(dteXml: string): void {
+    if (this._estado !== InvoiceStatus.STAMPED) {
+      throw new FiscalValidationError(
+        `No se puede asociar XML DTE a una factura en estado ${this._estado}. Debe estar en STAMPED.`
+      );
+    }
+    if (!this._tedXml) {
+      throw new FiscalValidationError(
+        'No se puede generar DTE sin un timbre TED asociado.'
+      );
+    }
+    if (!dteXml || !dteXml.includes('<DTE')) {
+      throw new FiscalValidationError('El contenido XML del DTE es inválido.');
+    }
+
+    this._dteXml = dteXml;
+    this._estado = InvoiceStatus.BUILT;
   }
 
   public get folio(): number | undefined {
@@ -161,5 +185,9 @@ export class Invoice {
 
   public get tedXml(): string | undefined {
     return this._tedXml;
+  }
+
+  public get dteXml(): string | undefined {
+    return this._dteXml;
   }
 }

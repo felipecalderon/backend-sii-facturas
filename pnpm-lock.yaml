@@ -38,6 +38,9 @@ importers:
       xmlbuilder2:
         specifier: ^4.0.3
         version: 4.0.3
+      xmllint-wasm:
+        specifier: ^5.3.0
+        version: 5.3.0(@types/node@24.13.3)
     devDependencies:
       '@nestjs/cli':
         specifier: ^12.0.0
@@ -2649,6 +2652,12 @@ packages:
     resolution: {integrity: sha512-bx8Q1STctnNaaDymWnkfQLKofs0mGNN7rLLapJlGuV3VlvegD7Ls4ggMjE3aUSWItCCzU0PEv45lI87iSigiCA==}
     engines: {node: '>=20.0'}
 
+  xmllint-wasm@5.3.0:
+    resolution: {integrity: sha512-sEgRXdf2t13eYCFCURmCE6h2hwleEOIS9VL/jOh9JJJnez2YXIooi2Ghm05/JZEPXyPawN8sMASPVZlmh8Sd6A==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@types/node': '>=16'
+
   xpath@0.0.33:
     resolution: {integrity: sha512-NNXnzrkDrAzalLhIUc01jO2mOzXGXh1JwPgkihcLLzw98c0WgYDmmjSh1Kl3wzaxSVWMuA+fe0WTWOBDWCBmNA==}
     engines: {node: '>=0.6.0'}
@@ -5000,6 +5009,10 @@ snapshots:
       '@oozcitak/infra': 2.0.2
       '@oozcitak/util': 10.0.0
       js-yaml: 4.3.2
+
+  xmllint-wasm@5.3.0(@types/node@24.13.3):
+    dependencies:
+      '@types/node': 24.13.3
 
   xpath@0.0.33: {}
 

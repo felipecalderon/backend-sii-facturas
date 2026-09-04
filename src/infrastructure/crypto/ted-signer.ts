@@ -8,13 +8,17 @@ export class TedSigner {
   public static generateAndSign(
     invoice: Invoice,
     caf: Caf,
-    customTimestamp?: Date,
+    customTimestamp?: Date
   ): Ted {
     if (!invoice.folio || invoice.folio <= 0) {
-      throw new FiscalValidationError('No se puede generar TED sin un folio asignado');
+      throw new FiscalValidationError(
+        'No se puede generar TED sin un folio asignado'
+      );
     }
     if (invoice.items.length === 0) {
-      throw new FiscalValidationError('No se puede generar TED sin al menos un ítem');
+      throw new FiscalValidationError(
+        'No se puede generar TED sin al menos un ítem'
+      );
     }
 
     const re = invoice.emisor.rut.toCanonical();
@@ -43,7 +47,7 @@ export class TedSigner {
       ddXml,
       tsted,
       signature,
-      algoritmo: 'SHA1withRSA',
+      algoritmo: 'SHA1withRSA'
     });
   }
 
@@ -71,7 +75,7 @@ export class TedSigner {
 
   public static convertModulusExponentToPem(
     modulusBase64: string,
-    exponentBase64: string,
+    exponentBase64: string
   ): string {
     const toBase64Url = (b64: string): string =>
       b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -80,9 +84,9 @@ export class TedSigner {
       key: {
         kty: 'RSA',
         n: toBase64Url(modulusBase64.trim()),
-        e: toBase64Url(exponentBase64.trim()),
+        e: toBase64Url(exponentBase64.trim())
       },
-      format: 'jwk',
+      format: 'jwk'
     });
 
     return keyObject.export({ type: 'spki', format: 'pem' }).toString();
