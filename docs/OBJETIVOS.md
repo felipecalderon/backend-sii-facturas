@@ -1,112 +1,51 @@
 # Motor de Facturación Electrónica SII — Objetivos y Roadmap
 
-## 1. Propósito
+## 1. Estado Actual: Fase 1 — Core del Motor Fiscal [COMPLETADO]
 
-Construir un motor backend en NestJS para la emisión, timbraje, firma, transmisión y consulta de Documentos Tributarios Electrónicos (DTE) ante el Servicio de Impuestos Internos (SII) de Chile.
+Se implementó el motor de dominio y orquestación con separación criptográfica, multitenancy nativo e idempotencia:
 
-El sistema es **multitenant nativo**: cada contribuyente opera de manera aislada mediante `tenantId`, incluyendo certificados, CAF, folios, configuración y documentos.
-
----
-
-## 2. Alcance del MVP Técnico
-
-El primer objetivo verificable es emitir un DTE válido contra el ambiente de certificación del SII.
-
-### 2.1. Incluido
-
-- **Multitenancy:** todas las operaciones requieren `tenantId`.
-- **DTE:** Factura Electrónica (`TipoDTE 33`).
-- **Ambiente:** certificación SII (Maullin / Palena).
-- **Folios:** importación de CAF y asignación atómica por tenant.
-- **TED:** generación y firma según especificación SII.
-- **XML:** generación y validación contra XSD oficiales.
-- **Firma digital:** XMLDSig del DTE y `EnvioDTE`.
-- **Autenticación SII:** semilla → firma → token.
-- **Transmisión:** envío de `EnvioDTE` y obtención de `TrackID`.
-- **Consulta:** consulta del estado del envío.
-- **Persistencia:** DTE persistido antes de su transmisión.
-- **Idempotencia:** control mediante `(tenantId, idempotencyKey)`.
-
-### 2.2. Fuera del MVP
-
-- Otros tipos de DTE.
-- Recepción y procesamiento de DTE de proveedores.
-- Portal administrativo.
-- Facturación masiva.
-- Integraciones con ERPs externos.
+* **M0 (Modelo Fiscal):** Entidades `Invoice`, `Money`, `Rut`, totales e invariantes de cálculo fiscal.
+* **M1 (Folios y CAF):** Parser CAF, persistencia y asignación atómica concurrente de folios.
+* **M2 (TED):** Construcción y firma RSA-SHA1 del timbre con clave privada del CAF.
+* **M3 (XML y XSD):** Serialización ISO-8859-1 y validación estricta contra esquemas XSD oficiales.
+* **M4 (XMLDSig):** Firma digital en memoria de `DTE` y sobre `EnvioDTE` con certificado digital.
+* **M5 (Gateway SII):** Autenticación (semilla → token con caché), transmisión multipart y consulta de estado.
+* **M6 (End-to-End):** Orquestador `IssueInvoiceUseCase`, persistencia previa a transmisión (`PERSISTED`), regla de incertidumbre (`UNKNOWN`) e idempotencia por `(tenantId, idempotencyKey)`.
 
 ---
 
-## 3. Principios Fiscales No Negociables
+## 2. Fase 2: API REST y Cableado NestJS
 
-1. **Modelo canónico:** el DTE es una entidad de dominio; el XML es una representación.
+### 2.1. Propósito
+Exponer el motor fiscal como una API HTTP modular, tipada y segura en NestJS, permitiendo la integración de clientes (frontend o servicios externos) sin introducir dependencias adicionales.
 
-2. **Precisión monetaria:** prohibido utilizar `number` directamente para cálculos fiscales. El dinero, cantidades, impuestos y redondeos deben utilizar tipos o Value Objects con precisión controlada.
-
-3. **Emisión ≠ transmisión:** crear, timbrar, firmar y persistir un DTE son operaciones independientes de su transmisión al SII.
-
-4. **Persistencia antes de transmisión:** ningún DTE firmado se transmite sin estar previamente persistido.
-
-5. **Asignación atómica de folios:** la reserva de folios debe ser segura frente a concurrencia por `(tenantId, tipoDte)`.
-
-6. **Separación criptográfica:**
-
-   - **TED:** firmado con la clave privada correspondiente al CAF.
-   - **DTE / EnvioDTE:** firmados mediante XMLDSig con el certificado digital autorizado.
+### 2.2. Principios de Diseño API
+1. **Contexto Multitenant:** Extracción consistente del `tenantId` (vía header `x-tenant-id` o autenticación). Ninguna operación fiscal ocurre sin tenant.
+2. **Validación en Frontera:** Todo payload HTTP se valida estrictamente con `class-validator` antes de tocar el dominio.
+3. **Mapeo de Errores Fiscales:** Un `ExceptionFilter` traduce excepciones de dominio (`FiscalValidationError`, `TenantMismatchError`, `SiiConnectionError`, etc.) a códigos HTTP estándar (400, 403, 404, 409, 422, 502, 504).
+4. **Idempotencia HTTP:** Soporte del header `Idempotency-Key` en operaciones de emisión (`POST /invoices`).
+5. **Sin dependencias extra:** Conexión a MongoDB y registro de repositorios/casos de uso utilizando únicamente los paquetes ya instalados (`mongoose`, `@nestjs/common`, `class-validator`).
 
 ---
 
-## 4. Máquina de Estados
+## 3. Roadmap Fase 2
 
-```text
-[DRAFT]
-   ↓
-[FOLIO_ASSIGNED]
-   ↓
-[BUILT]
-   ↓
-[STAMPED]
-   ↓
-[SIGNED]
-   ↓
-[PERSISTED]
-   ↓
-[SUBMITTED]
-   ↓
-[ACCEPTED] | [REJECTED] | [OBSERVED] | [UNKNOWN]
-```
-
-### Regla de incertidumbre
-
-Un timeout, error de conexión o respuesta ambigua del SII **no implica rechazo**.
-
-El documento debe quedar en un estado recuperable (`UNKNOWN`) hasta determinar su situación mediante los mecanismos disponibles del SII.
+| Hito | Nombre | Entregable Medible |
+| :--- | :--- | :--- |
+| **M7** | **Módulos e Infraestructura NestJS** | Conexión administrada de `Mongoose`, registro de repositorios (`MongoCertificateRepository`, `MongoFolioRepository`, `MongoInvoiceRepository`) y configuración de inyección de dependencias en módulos dedicados (`CertificateModule`, `FolioModule`, `DteModule`, `SiiModule`). |
+| **M8** | **Controladores y DTOs de Configuración** | `CertificatesController` (`POST /certificates`) para carga de .p12 cifrado en memoria y `CafsController` (`POST /cafs`, `GET /folios/status`) para importación de CAF y consulta de folios disponibles. DTOs con validación estricta. |
+| **M9** | **Controlador de Facturación y Consulta** | `InvoicesController` con `POST /invoices` (emisión con idempotencia) y `GET /invoices/:folio/status` (consulta y sincronización de estado con SII). |
+| **M10** | **Filtros de Excepción y Pruebas E2E HTTP** | `FiscalExceptionFilter` global y suite de pruebas E2E con `supertest` que valide los flujos HTTP completos (201 Created, 200 OK en duplicado por idempotencia, 422 en cálculo inválido, 504 en timeout SII). |
 
 ---
 
-## 5. Roadmap
+## 4. Criterio de Éxito de la Fase 2
 
-| Hito                  | Nombre            | Entregable                                                                     |
-| :-------------------- | :---------------- | :----------------------------------------------------------------------------- |
-| **M0 [IMPLEMENTADO]** | **Modelo Fiscal** | `Invoice`, `Money`, `Rut`, impuestos y validaciones sin dependencias externas. |
-| **M1 [IMPLEMENTADO]** | **Folios y CAF**  | Parser CAF, repositorio y asignación atómica de folios.                        |
-| **M2 [IMPLEMENTADO]** | **TED**           | Construcción y firma del TED según especificación SII.                         |
-| **M3 [IMPLEMENTADO]** | **XML y XSD**     | Serialización del DTE y validación contra XSD oficiales.                       |
-| **M4 [IMPLEMENTADO]** | **XMLDSig**       | Firma digital del DTE y `EnvioDTE`.                                            |
-| **M5 [IMPLEMENTADO]** | **Gateway SII**   | Autenticación, transmisión y consulta de estado.                               |
-| **M6 [IMPLEMENTADO]** | **End-to-End**    | `IssueInvoice` ejecutando el flujo completo en certificación.                  |
+El servicio HTTP se considerará listo cuando una prueba E2E (`test/app.e2e-spec.ts`):
 
----
-
-## 6. Criterio de Éxito
-
-El MVP se considera completo cuando una prueba de integración automatizada pueda:
-
-1. Recibir una factura para un `tenantId`.
-2. Asignar un folio válido del CAF.
-3. Generar y timbrar el DTE.
-4. Firmar correctamente el XML.
-5. Autenticarse contra certificación SII.
-6. Transmitir el `EnvioDTE` y obtener `TrackID`.
-7. Persistir y consultar el estado del documento.
-8. Reintentar la misma operación con la misma `idempotencyKey` sin consumir otro folio ni generar un envío duplicado.
+1. Inicialice la aplicación NestJS completa con su módulo raíz.
+2. Cargue un certificado y un CAF vía `POST` HTTP.
+3. Emita una factura vía `POST /invoices` con header `x-tenant-id` e `Idempotency-Key`, recibiendo HTTP 201 con `folio` y `trackId`.
+4. Reintente el mismo `POST /invoices` con el mismo `Idempotency-Key`, recibiendo HTTP 200/201 con el mismo folio sin duplicar transacciones.
+5. Consulte el estado vía `GET /invoices/:folio/status`, recibiendo el estado actual del SII.
+6. Envíe un payload con totales inconsistentes o RUT mal formado, recibiendo HTTP 400/422 estructurado sin exponer trazas internas.
