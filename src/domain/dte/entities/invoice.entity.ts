@@ -43,6 +43,9 @@ export interface InvoiceProps {
   tedXml?: string;
   dteXml?: string;
   signedDteXml?: string;
+  trackId?: string;
+  glosaRechazo?: string;
+  observaciones?: string[];
 }
 
 export class Invoice {
@@ -58,6 +61,9 @@ export class Invoice {
   private _tedXml?: string;
   private _dteXml?: string;
   private _signedDteXml?: string;
+  private _trackId?: string;
+  private _glosaRechazo?: string;
+  private _observaciones?: string[];
   public readonly idempotencyKey?: string;
 
   private constructor(props: InvoiceProps) {
@@ -73,6 +79,11 @@ export class Invoice {
     this._tedXml = props.tedXml;
     this._dteXml = props.dteXml;
     this._signedDteXml = props.signedDteXml;
+    this._trackId = props.trackId;
+    this._glosaRechazo = props.glosaRechazo;
+    this._observaciones = props.observaciones
+      ? (Object.freeze([...props.observaciones]) as string[])
+      : undefined;
     this.idempotencyKey = props.idempotencyKey;
   }
 
@@ -194,6 +205,80 @@ export class Invoice {
     this._estado = InvoiceStatus.SIGNED;
   }
 
+  public markPersisted(): void {
+    if (this._estado !== InvoiceStatus.SIGNED) {
+      throw new FiscalValidationError(
+        `No se puede marcar como PERSISTED una factura en estado ${this._estado}. Debe estar en SIGNED.`
+      );
+    }
+    this._estado = InvoiceStatus.PERSISTED;
+  }
+
+  public markSubmitted(trackId: string): void {
+    if (
+      this._estado !== InvoiceStatus.PERSISTED &&
+      this._estado !== InvoiceStatus.SIGNED &&
+      this._estado !== InvoiceStatus.UNKNOWN
+    ) {
+      throw new FiscalValidationError(
+        `No se puede marcar como SUBMITTED una factura en estado ${this._estado}. Debe estar en PERSISTED, SIGNED o UNKNOWN.`
+      );
+    }
+    if (!trackId || trackId.trim().length === 0) {
+      throw new FiscalValidationError(
+        'El trackId emitido por el SII es obligatorio para transicionar a SUBMITTED.'
+      );
+    }
+
+    this._trackId = trackId.trim();
+    this._estado = InvoiceStatus.SUBMITTED;
+  }
+
+  public markAccepted(): void {
+    if (
+      this._estado !== InvoiceStatus.SUBMITTED &&
+      this._estado !== InvoiceStatus.UNKNOWN
+    ) {
+      throw new FiscalValidationError(
+        `No se puede marcar como ACCEPTED una factura en estado ${this._estado}. Debe estar en SUBMITTED o UNKNOWN.`
+      );
+    }
+    this._estado = InvoiceStatus.ACCEPTED;
+  }
+
+  public markRejected(motivo: string): void {
+    if (
+      this._estado !== InvoiceStatus.SUBMITTED &&
+      this._estado !== InvoiceStatus.UNKNOWN
+    ) {
+      throw new FiscalValidationError(
+        `No se puede marcar como REJECTED una factura en estado ${this._estado}. Debe estar en SUBMITTED o UNKNOWN.`
+      );
+    }
+    this._glosaRechazo = motivo;
+    this._estado = InvoiceStatus.REJECTED;
+  }
+
+  public markObserved(observaciones: string[]): void {
+    if (
+      this._estado !== InvoiceStatus.SUBMITTED &&
+      this._estado !== InvoiceStatus.UNKNOWN
+    ) {
+      throw new FiscalValidationError(
+        `No se puede marcar como OBSERVED una factura en estado ${this._estado}. Debe estar en SUBMITTED o UNKNOWN.`
+      );
+    }
+    this._observaciones = Object.freeze([...observaciones]) as string[];
+    this._estado = InvoiceStatus.OBSERVED;
+  }
+
+  public markUnknown(razon?: string): void {
+    if (razon) {
+      this._glosaRechazo = razon;
+    }
+    this._estado = InvoiceStatus.UNKNOWN;
+  }
+
   public get folio(): number | undefined {
     return this._folio;
   }
@@ -212,5 +297,17 @@ export class Invoice {
 
   public get signedDteXml(): string | undefined {
     return this._signedDteXml;
+  }
+
+  public get trackId(): string | undefined {
+    return this._trackId;
+  }
+
+  public get glosaRechazo(): string | undefined {
+    return this._glosaRechazo;
+  }
+
+  public get observaciones(): readonly string[] | undefined {
+    return this._observaciones;
   }
 }

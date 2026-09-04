@@ -145,4 +145,81 @@ describe('Invoice Aggregate Root (Factura 33)', () => {
       })
     ).toThrow(FiscalValidationError);
   });
+
+  it('debe transicionar por el ciclo completo de envío: SIGNED -> PERSISTED -> SUBMITTED -> ACCEPTED', () => {
+    const invoice = Invoice.createDraft({
+      tenantId: 'tenant-123',
+      fechaEmision: new Date('2026-09-03'),
+      emisor: createValidIssuer(),
+      receptor: createValidReceiver(),
+      items: [
+        InvoiceItem.create({
+          linea: 1,
+          nombre: 'Servicio',
+          cantidad: Money.fromInteger(1),
+          precioUnitario: Money.fromInteger(1000)
+        })
+      ]
+    });
+
+    invoice.assignFolio(10);
+    invoice.stampTed('<TED version="1.0"><DD></DD></TED>');
+    invoice.setDteXml('<DTE version="1.0"><Documento></Documento></DTE>');
+    invoice.sign(
+      '<DTE version="1.0"><Documento></Documento><Signature></Signature></DTE>'
+    );
+    expect(invoice.estado).toBe(InvoiceStatus.SIGNED);
+
+    invoice.markPersisted();
+    expect(invoice.estado).toBe(InvoiceStatus.PERSISTED);
+
+    invoice.markSubmitted('9876543210');
+    expect(invoice.estado).toBe(InvoiceStatus.SUBMITTED);
+    expect(invoice.trackId).toBe('9876543210');
+
+    invoice.markAccepted();
+    expect(invoice.estado).toBe(InvoiceStatus.ACCEPTED);
+  });
+
+  it('debe manejar transiciones a REJECTED, OBSERVED y UNKNOWN ante regla de incertidumbre', () => {
+    const invoice = Invoice.createDraft({
+      tenantId: 'tenant-123',
+      fechaEmision: new Date('2026-09-03'),
+      emisor: createValidIssuer(),
+      receptor: createValidReceiver(),
+      items: [
+        InvoiceItem.create({
+          linea: 1,
+          nombre: 'Servicio',
+          cantidad: Money.fromInteger(1),
+          precioUnitario: Money.fromInteger(1000)
+        })
+      ]
+    });
+
+    invoice.assignFolio(11);
+    invoice.stampTed('<TED version="1.0"><DD></DD></TED>');
+    invoice.setDteXml('<DTE version="1.0"><Documento></Documento></DTE>');
+    invoice.sign(
+      '<DTE version="1.0"><Documento></Documento><Signature></Signature></DTE>'
+    );
+    invoice.markSubmitted('11223344');
+
+    // Transición a REJECTED
+    invoice.markRejected('Error en Carátula');
+    expect(invoice.estado).toBe(InvoiceStatus.REJECTED);
+    expect(invoice.glosaRechazo).toBe('Error en Carátula');
+
+    // Regla de incertidumbre: UNKNOWN
+    invoice.markUnknown('Timeout en consulta');
+    expect(invoice.estado).toBe(InvoiceStatus.UNKNOWN);
+    expect(invoice.glosaRechazo).toBe('Timeout en consulta');
+
+    // Recuperación desde UNKNOWN a OBSERVED
+    invoice.markObserved(['Falta actividad económica secundaria']);
+    expect(invoice.estado).toBe(InvoiceStatus.OBSERVED);
+    expect(invoice.observaciones).toEqual([
+      'Falta actividad económica secundaria'
+    ]);
+  });
 });

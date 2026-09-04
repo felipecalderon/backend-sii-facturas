@@ -1,0 +1,101 @@
+import {
+  Invoice,
+  InvoiceStatus
+} from '../../domain/dte/entities/invoice.entity.js';
+import { AuthenticateSiiUseCase } from './authenticate-sii.use-case.js';
+import { SiiGateway } from '../../domain/sii/ports/sii-gateway.port.js';
+import { SiiEnvironment } from '../../domain/sii/values/sii-domain.types.js';
+import { Rut } from '../../domain/shared/rut.vo.js';
+import { TenantMismatchError } from '../../domain/folio/errors/folio-domain.error.js';
+import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
+import { SiiConnectionError } from '../../domain/sii/errors/sii-domain.error.js';
+
+export interface SubmitEnvioDteDto {
+  tenantId: string;
+  invoices: Invoice[];
+  envioDteXml: string;
+  rutSender: Rut;
+  environment?: SiiEnvironment;
+}
+
+export interface SubmitEnvioDteResult {
+  trackId: string;
+  environment: SiiEnvironment;
+  invoices: Invoice[];
+}
+
+export class SubmitEnvioDteUseCase {
+  constructor(
+    private readonly authenticateSiiUseCase: AuthenticateSiiUseCase,
+    private readonly siiGateway: SiiGateway
+  ) {}
+
+  public async execute(dto: SubmitEnvioDteDto): Promise<SubmitEnvioDteResult> {
+    if (!dto.invoices || dto.invoices.length === 0) {
+      throw new FiscalValidationError(
+        'Se requiere al menos una factura para enviar al SII'
+      );
+    }
+
+    if (!dto.envioDteXml || !dto.envioDteXml.includes('<EnvioDTE')) {
+      throw new FiscalValidationError(
+        'El XML del EnvioDTE es obligatorio y debe ser válido'
+      );
+    }
+
+    for (const inv of dto.invoices) {
+      if (inv.tenantId !== dto.tenantId) {
+        throw new TenantMismatchError(dto.tenantId, inv.tenantId);
+      }
+      if (
+        inv.estado !== InvoiceStatus.SIGNED &&
+        inv.estado !== InvoiceStatus.PERSISTED
+      ) {
+        throw new FiscalValidationError(
+          `La factura Folio ${inv.folio} está en estado ${inv.estado}. Debe estar en SIGNED o PERSISTED para envío.`
+        );
+      }
+    }
+
+    const firstInvoice = dto.invoices[0];
+    const rutCompany = firstInvoice.emisor.rut;
+    const env = dto.environment ?? 'CERTIFICATION';
+
+    // 1. Obtener token de sesión activo (usa caché si está disponible)
+    const auth = await this.authenticateSiiUseCase.execute({
+      tenantId: dto.tenantId,
+      environment: env
+    });
+
+    // 2. Transmitir el EnvioDTE
+    try {
+      const sendResult = await this.siiGateway.sendDte({
+        env,
+        token: auth.token,
+        rutSender: dto.rutSender,
+        rutCompany,
+        envioDteXml: dto.envioDteXml
+      });
+
+      // 3. Transicionar facturas a SUBMITTED
+      for (const inv of dto.invoices) {
+        inv.markSubmitted(sendResult.trackId);
+      }
+
+      return {
+        trackId: sendResult.trackId,
+        environment: env,
+        invoices: dto.invoices
+      };
+    } catch (err: unknown) {
+      // Regla de incertidumbre: si hay fallo de conexión o timeout, el documento no se rechaza,
+      // pasa a estado UNKNOWN para reconciliación posterior sin duplicar folios.
+      if (err instanceof SiiConnectionError) {
+        for (const inv of dto.invoices) {
+          inv.markUnknown(err.message);
+        }
+      }
+      throw err;
+    }
+  }
+}
