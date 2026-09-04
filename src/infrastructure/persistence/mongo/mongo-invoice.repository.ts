@@ -1,3 +1,5 @@
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { InvoiceRepository } from '../../../domain/dte/ports/invoice.repository.js';
 import {
@@ -13,10 +15,15 @@ import { InvoiceItem } from '../../../domain/dte/entities/invoice-item.entity.js
 import { InvoiceTotals } from '../../../domain/dte/values/invoice-totals.vo.js';
 import { InvoiceDocument, getInvoiceModel } from './schemas/invoice.schema.js';
 
+@Injectable()
 export class MongoInvoiceRepository implements InvoiceRepository {
   private readonly invoiceModel: Model<InvoiceDocument>;
 
-  constructor(customModel?: Model<InvoiceDocument>) {
+  constructor(
+    @Optional()
+    @InjectModel('Invoice')
+    customModel?: Model<InvoiceDocument>
+  ) {
     this.invoiceModel = customModel ?? getInvoiceModel();
   }
 

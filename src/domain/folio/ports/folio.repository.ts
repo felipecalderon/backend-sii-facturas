@@ -21,3 +21,5 @@ export interface FolioRepository {
     tipoDte: TipoDte
   ): Promise<FolioStatus | null>;
 }
+
+export const FOLIO_REPOSITORY_TOKEN = 'FOLIO_REPOSITORY';

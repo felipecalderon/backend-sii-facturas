@@ -1,3 +1,5 @@
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import {
   CertificateRepository,
@@ -12,12 +14,16 @@ import {
   getCertificateModel
 } from './schemas/certificate.schema.js';
 
+@Injectable()
 export class MongoCertificateRepository implements CertificateRepository {
   private readonly certModel: Model<CertificateDocument>;
   private readonly encryptionService: EncryptionService;
 
   constructor(
+    @Optional()
+    @InjectModel('Certificate')
     customModel?: Model<CertificateDocument>,
+    @Optional()
     customEncryption?: EncryptionService
   ) {
     this.certModel = customModel ?? getCertificateModel();

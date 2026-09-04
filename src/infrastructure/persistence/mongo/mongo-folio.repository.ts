@@ -1,3 +1,5 @@
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import {
   FolioRepository,
@@ -12,10 +14,15 @@ import {
 } from '../../../domain/folio/errors/folio-domain.error.js';
 import { CafDocument, getCafModel } from './schemas/caf.schema.js';
 
+@Injectable()
 export class MongoFolioRepository implements FolioRepository {
   private readonly cafModel: Model<CafDocument>;
 
-  constructor(customModel?: Model<CafDocument>) {
+  constructor(
+    @Optional()
+    @InjectModel('Caf')
+    customModel?: Model<CafDocument>
+  ) {
     this.cafModel = customModel ?? getCafModel();
   }
 

@@ -12,3 +12,5 @@ export interface SiiGateway {
   sendDte(params: SiiSendParams): Promise<SiiSendResult>;
   querySendStatus(params: SiiQueryStatusParams): Promise<SiiSendStatusResult>;
 }
+
+export const SII_GATEWAY_TOKEN = 'SII_GATEWAY';

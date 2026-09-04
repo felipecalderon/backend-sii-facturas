@@ -17,3 +17,5 @@ export interface CertificateRepository {
   saveEncryptedCertificate(dto: SaveEncryptedCertificateDto): Promise<void>;
   findActiveCertificate(tenantId: string): Promise<DigitalCertificate | null>;
 }
+
+export const CERTIFICATE_REPOSITORY_TOKEN = 'CERTIFICATE_REPOSITORY';

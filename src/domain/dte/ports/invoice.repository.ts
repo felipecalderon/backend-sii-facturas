@@ -13,3 +13,5 @@ export interface InvoiceRepository {
     idempotencyKey: string
   ): Promise<Invoice | null>;
 }
+
+export const INVOICE_REPOSITORY_TOKEN = 'INVOICE_REPOSITORY';

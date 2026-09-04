@@ -1,4 +1,5 @@
-import { Schema, type Document, type Model, model, models } from 'mongoose';
+import mongoose, { Schema, type Document, type Model, model } from 'mongoose';
+const { models } = mongoose;
 
 export interface CertificateDocument extends Document {
   tenantId: string;
