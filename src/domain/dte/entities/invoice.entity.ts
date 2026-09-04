@@ -42,6 +42,7 @@ export interface InvoiceProps {
   idempotencyKey?: string;
   tedXml?: string;
   dteXml?: string;
+  signedDteXml?: string;
 }
 
 export class Invoice {
@@ -56,6 +57,7 @@ export class Invoice {
   private _estado: InvoiceStatus;
   private _tedXml?: string;
   private _dteXml?: string;
+  private _signedDteXml?: string;
   public readonly idempotencyKey?: string;
 
   private constructor(props: InvoiceProps) {
@@ -70,6 +72,7 @@ export class Invoice {
     this._estado = props.estado;
     this._tedXml = props.tedXml;
     this._dteXml = props.dteXml;
+    this._signedDteXml = props.signedDteXml;
     this.idempotencyKey = props.idempotencyKey;
   }
 
@@ -175,6 +178,22 @@ export class Invoice {
     this._estado = InvoiceStatus.BUILT;
   }
 
+  public sign(signedDteXml: string): void {
+    if (this._estado !== InvoiceStatus.BUILT) {
+      throw new FiscalValidationError(
+        `No se puede firmar una factura en estado ${this._estado}. Debe estar en BUILT.`
+      );
+    }
+    if (!signedDteXml || !signedDteXml.includes('<Signature')) {
+      throw new FiscalValidationError(
+        'El XML firmado debe incluir la firma digital <Signature>.'
+      );
+    }
+
+    this._signedDteXml = signedDteXml;
+    this._estado = InvoiceStatus.SIGNED;
+  }
+
   public get folio(): number | undefined {
     return this._folio;
   }
@@ -189,5 +208,9 @@ export class Invoice {
 
   public get dteXml(): string | undefined {
     return this._dteXml;
+  }
+
+  public get signedDteXml(): string | undefined {
+    return this._signedDteXml;
   }
 }
