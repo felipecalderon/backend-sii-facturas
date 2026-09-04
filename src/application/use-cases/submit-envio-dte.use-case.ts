@@ -49,10 +49,11 @@ export class SubmitEnvioDteUseCase {
       }
       if (
         inv.estado !== InvoiceStatus.SIGNED &&
-        inv.estado !== InvoiceStatus.PERSISTED
+        inv.estado !== InvoiceStatus.PERSISTED &&
+        inv.estado !== InvoiceStatus.UNKNOWN
       ) {
         throw new FiscalValidationError(
-          `La factura Folio ${inv.folio} está en estado ${inv.estado}. Debe estar en SIGNED o PERSISTED para envío.`
+          `La factura Folio ${inv.folio} está en estado ${inv.estado}. Debe estar en SIGNED, PERSISTED o UNKNOWN para envío.`
         );
       }
     }

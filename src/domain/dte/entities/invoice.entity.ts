@@ -135,6 +135,10 @@ export class Invoice {
     });
   }
 
+  public static reconstitute(props: InvoiceProps): Invoice {
+    return new Invoice(props);
+  }
+
   public assignFolio(folio: number): void {
     if (this._estado !== InvoiceStatus.DRAFT) {
       throw new FiscalValidationError(

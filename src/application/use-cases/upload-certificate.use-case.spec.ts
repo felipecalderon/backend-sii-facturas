@@ -6,7 +6,6 @@ import { EncryptionService } from '../../infrastructure/security/encryption.serv
 import { createEphemeralCertificate } from '../../infrastructure/crypto/test-cert-helper.js';
 import {
   CertificateExpiredError,
-  InvalidCertificateError,
   InvalidCertificatePasswordError
 } from '../../domain/certificate/errors/certificate-domain.error.js';
 

@@ -38,9 +38,14 @@ export class CreateEnvioDteUseCase {
       if (invoice.tenantId !== dto.tenantId) {
         throw new TenantMismatchError(dto.tenantId, invoice.tenantId);
       }
-      if (invoice.estado !== InvoiceStatus.SIGNED || !invoice.signedDteXml) {
+      const validStates = [
+        InvoiceStatus.SIGNED,
+        InvoiceStatus.PERSISTED,
+        InvoiceStatus.UNKNOWN
+      ];
+      if (!validStates.includes(invoice.estado) || !invoice.signedDteXml) {
         throw new FiscalValidationError(
-          `La factura Folio ${invoice.folio} no está firmada (estado actual: ${invoice.estado}). Debe estar en SIGNED.`
+          `La factura Folio ${invoice.folio} no está firmada (estado actual: ${invoice.estado}). Debe estar en SIGNED, PERSISTED o UNKNOWN.`
         );
       }
     }

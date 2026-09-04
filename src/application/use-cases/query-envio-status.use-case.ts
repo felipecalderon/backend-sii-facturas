@@ -9,6 +9,8 @@ import { Rut } from '../../domain/shared/rut.vo.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 import { TenantMismatchError } from '../../domain/folio/errors/folio-domain.error.js';
 
+import { InvoiceRepository } from '../../domain/dte/ports/invoice.repository.js';
+
 export interface QueryEnvioStatusDto {
   tenantId: string;
   trackId: string;
@@ -27,7 +29,8 @@ export interface QueryEnvioStatusResult {
 export class QueryEnvioStatusUseCase {
   constructor(
     private readonly authenticateSiiUseCase: AuthenticateSiiUseCase,
-    private readonly siiGateway: SiiGateway
+    private readonly siiGateway: SiiGateway,
+    private readonly invoiceRepository?: InvoiceRepository
   ) {}
 
   public async execute(
@@ -79,6 +82,12 @@ export class QueryEnvioStatusUseCase {
           );
         }
         // Si status === 'REC' permanece en SUBMITTED
+      }
+
+      if (this.invoiceRepository) {
+        for (const inv of dto.invoices) {
+          await this.invoiceRepository.save(inv);
+        }
       }
     }
 

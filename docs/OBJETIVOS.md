@@ -94,7 +94,7 @@ El documento debe quedar en un estado recuperable (`UNKNOWN`) hasta determinar s
 | **M3 [IMPLEMENTADO]** | **XML y XSD**     | Serialización del DTE y validación contra XSD oficiales.                       |
 | **M4 [IMPLEMENTADO]** | **XMLDSig**       | Firma digital del DTE y `EnvioDTE`.                                            |
 | **M5 [IMPLEMENTADO]** | **Gateway SII**   | Autenticación, transmisión y consulta de estado.                               |
-| **M6**                | **End-to-End**    | `IssueInvoice` ejecutando el flujo completo en certificación.                  |
+| **M6 [IMPLEMENTADO]** | **End-to-End**    | `IssueInvoice` ejecutando el flujo completo en certificación.                  |
 
 ---
 
