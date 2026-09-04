@@ -90,9 +90,9 @@ El documento debe quedar en un estado recuperable (`UNKNOWN`) hasta determinar s
 | :-------------------- | :---------------- | :----------------------------------------------------------------------------- |
 | **M0 [IMPLEMENTADO]** | **Modelo Fiscal** | `Invoice`, `Money`, `Rut`, impuestos y validaciones sin dependencias externas. |
 | **M1 [IMPLEMENTADO]** | **Folios y CAF**  | Parser CAF, repositorio y asignación atómica de folios.                        |
-| **M2**                | **TED**           | Construcción y firma del TED según especificación SII.                         |
-| **M3**                | **XML y XSD**     | Serialización del DTE y validación contra XSD oficiales.                       |
-| **M4**                | **XMLDSig**       | Firma digital del DTE y `EnvioDTE`.                                            |
+| **M2 [IMPLEMENTADO]** | **TED**           | Construcción y firma del TED según especificación SII.                         |
+| **M3 [IMPLEMENTADO]** | **XML y XSD**     | Serialización del DTE y validación contra XSD oficiales.                       |
+| **M4 [IMPLEMENTADO]** | **XMLDSig**       | Firma digital del DTE y `EnvioDTE`.                                            |
 | **M5**                | **Gateway SII**   | Autenticación, transmisión y consulta de estado.                               |
 | **M6**                | **End-to-End**    | `IssueInvoice` ejecutando el flujo completo en certificación.                  |
 
