@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { CertificateModule } from '../src/modules/certificate/certificate.module.js';
+import { CertificatesController } from '../src/modules/certificate/certificates.controller.js';
 import { FolioModule } from '../src/modules/folio/folio.module.js';
+import { CafsController } from '../src/modules/folio/cafs.controller.js';
 import { SiiModule } from '../src/modules/sii/sii.module.js';
 import { DteModule } from '../src/modules/dte/dte.module.js';
 import { AppModule } from '../src/app.module.js';
@@ -73,6 +75,14 @@ describe('NestJS Modules & Dependency Injection (M7)', () => {
       expect(useCase).toBeDefined();
       expect(typeof useCase.execute).toBe('function');
     });
+
+    it('debe resolver CertificatesController', () => {
+      const controller = moduleRef.get<CertificatesController>(
+        CertificatesController
+      );
+      expect(controller).toBeDefined();
+      expect(typeof controller.uploadCertificate).toBe('function');
+    });
   });
 
   describe('FolioModule', () => {
@@ -92,6 +102,13 @@ describe('NestJS Modules & Dependency Injection (M7)', () => {
       const useCase = moduleRef.get<AllocateFolioUseCase>(AllocateFolioUseCase);
       expect(useCase).toBeDefined();
       expect(typeof useCase.execute).toBe('function');
+    });
+
+    it('debe resolver CafsController', () => {
+      const controller = moduleRef.get<CafsController>(CafsController);
+      expect(controller).toBeDefined();
+      expect(typeof controller.importCaf).toBe('function');
+      expect(typeof controller.getFolioStatus).toBe('function');
     });
   });
 

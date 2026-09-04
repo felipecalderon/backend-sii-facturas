@@ -8,6 +8,7 @@ import {
 import { MongoCertificateRepository } from '../../infrastructure/persistence/mongo/mongo-certificate.repository.js';
 import { EncryptionService } from '../../infrastructure/security/encryption.service.js';
 import { UploadCertificateUseCase } from '../../application/use-cases/upload-certificate.use-case.js';
+import { CertificatesController } from './certificates.controller.js';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UploadCertificateUseCase } from '../../application/use-cases/upload-cer
       { name: 'Certificate', schema: CertificateSchema }
     ])
   ],
+  controllers: [CertificatesController],
   providers: [
     EncryptionService,
     {

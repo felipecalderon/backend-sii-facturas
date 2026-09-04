@@ -8,9 +8,11 @@ import {
 import { MongoFolioRepository } from '../../infrastructure/persistence/mongo/mongo-folio.repository.js';
 import { ImportCafUseCase } from '../../application/use-cases/import-caf.use-case.js';
 import { AllocateFolioUseCase } from '../../application/use-cases/allocate-folio.use-case.js';
+import { CafsController } from './cafs.controller.js';
 
 @Module({
   imports: [MongooseModule.forFeature([{ name: 'Caf', schema: CafSchema }])],
+  controllers: [CafsController],
   providers: [
     {
       provide: FOLIO_REPOSITORY_TOKEN,
