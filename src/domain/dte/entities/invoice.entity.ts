@@ -40,6 +40,7 @@ export interface InvoiceProps {
   totales: InvoiceTotals;
   estado: InvoiceStatus;
   idempotencyKey?: string;
+  tedXml?: string;
 }
 
 export class Invoice {
@@ -52,6 +53,7 @@ export class Invoice {
   public readonly items: readonly InvoiceItem[];
   public readonly totales: InvoiceTotals;
   private _estado: InvoiceStatus;
+  private _tedXml?: string;
   public readonly idempotencyKey?: string;
 
   private constructor(props: InvoiceProps) {
@@ -64,6 +66,7 @@ export class Invoice {
     this.items = Object.freeze([...props.items]);
     this.totales = props.totales;
     this._estado = props.estado;
+    this._tedXml = props.tedXml;
     this.idempotencyKey = props.idempotencyKey;
   }
 
@@ -131,11 +134,32 @@ export class Invoice {
     this._estado = InvoiceStatus.FOLIO_ASSIGNED;
   }
 
+  public stampTed(tedXml: string): void {
+    if (this._estado !== InvoiceStatus.FOLIO_ASSIGNED) {
+      throw new FiscalValidationError(
+        `No se puede timbrar una factura en estado ${this._estado}. Debe estar en FOLIO_ASSIGNED.`,
+      );
+    }
+    if (!this._folio || this._folio <= 0) {
+      throw new FiscalValidationError('No se puede timbrar una factura sin un folio asignado válido.');
+    }
+    if (!tedXml || !tedXml.includes('<TED')) {
+      throw new FiscalValidationError('El XML de timbre TED es inválido.');
+    }
+
+    this._tedXml = tedXml;
+    this._estado = InvoiceStatus.STAMPED;
+  }
+
   public get folio(): number | undefined {
     return this._folio;
   }
 
   public get estado(): InvoiceStatus {
     return this._estado;
+  }
+
+  public get tedXml(): string | undefined {
+    return this._tedXml;
   }
 }
