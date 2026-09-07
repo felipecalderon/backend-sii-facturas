@@ -3,9 +3,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module.js';
+import { FiscalExceptionFilter } from './infrastructure/http/filters/fiscal-exception.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Filtro global de excepciones de dominio fiscal
+  app.useGlobalFilters(new FiscalExceptionFilter());
 
   // Validación global de DTOs
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -30,7 +34,7 @@ async function bootstrap() {
       in: 'header',
       required: true,
       description: 'Identificador único del tenant (contribuyente)',
-      schema: { type: 'string', example: 'tenant-76123456-0' }
+      schema: { type: 'string', example: 'tenant-77058146-K' }
     })
     .build();
 

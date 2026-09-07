@@ -13,6 +13,7 @@ import { InvoiceItem } from '../../domain/dte/entities/invoice-item.entity.js';
 import { TipoDte } from '../../domain/dte/values/dte-type.vo.js';
 import { Rut } from '../../domain/shared/rut.vo.js';
 import { Money } from '../../domain/shared/money.vo.js';
+import { Caf } from '../../domain/folio/entities/caf.entity.js';
 import { FolioRepository } from '../../domain/folio/ports/folio.repository.js';
 import { CertificateRepository } from '../../domain/certificate/ports/certificate.repository.js';
 import { InvoiceRepository } from '../../domain/dte/ports/invoice.repository.js';
@@ -232,6 +233,44 @@ describe('M6 End-to-End: IssueInvoiceUseCase', () => {
     // 6. Transmisión SII y TrackID
     expect(mockSubmitEnvioUseCase.execute).toHaveBeenCalled();
     expect(result.invoice.trackId).toBe('TRACK-SII-998877');
+  });
+
+  it('entrega al timbrado el mismo CAF que asignó el folio', async () => {
+    const assignedCaf = Caf.create({
+      tenantId,
+      tipoDte: TipoDte.facturaElectronica(),
+      rangoDesde: 1,
+      rangoHasta: 200,
+      ultimoFolioAsignado: 101,
+      clavePrivadaPem: digitalCert.privateKeyPem,
+      cafXml: '<CAF version="1.0"><DA></DA></CAF>',
+      fechaAutorizacion: new Date('2026-09-03'),
+      rutEmisor: validIssuer.rut,
+      activo: true
+    });
+    (
+      mockFolioRepo.allocateNextFolio as unknown as {
+        mockResolvedValue: (value: unknown) => void;
+      }
+    ).mockResolvedValue({ folio: 101, caf: assignedCaf });
+
+    const dto: IssueInvoiceDto = {
+      tenantId,
+      fechaEmision: new Date('2026-09-04'),
+      emisor: validIssuer,
+      receptor: validReceiver,
+      items: createValidItems(),
+      idempotencyKey: 'idemp-mismo-caf'
+    };
+
+    await issueInvoiceUseCase.execute(dto);
+
+    expect(mockStampUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId,
+        caf: assignedCaf
+      })
+    );
   });
 
   it('7. Cumple el Principio Fiscal #4: Persistencia antes de transmisión', async () => {

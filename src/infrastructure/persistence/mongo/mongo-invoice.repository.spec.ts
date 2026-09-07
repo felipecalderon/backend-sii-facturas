@@ -72,7 +72,7 @@ describe('MongoInvoiceRepository', () => {
     expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
       { tenantId: 'tenant-123', idempotencyKey: 'key-abc-123' },
       { $set: expect.objectContaining({ tenantId: 'tenant-123', folio: 42 }) },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
   });
 
@@ -98,7 +98,7 @@ describe('MongoInvoiceRepository', () => {
     expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
       { tenantId: 'tenant-123', tipoDte: 33, folio: 99 },
       { $set: expect.objectContaining({ tenantId: 'tenant-123', folio: 99 }) },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
   });
 

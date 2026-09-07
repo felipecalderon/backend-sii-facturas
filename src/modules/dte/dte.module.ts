@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { InvoiceSchema } from '../../infrastructure/persistence/mongo/schemas/invoice.schema.js';
+import { IssuerSchema } from '../../infrastructure/persistence/mongo/schemas/issuer.schema.js';
 import { CertificateModule } from '../certificate/certificate.module.js';
 import { FolioModule } from '../folio/folio.module.js';
 import { SiiModule } from '../sii/sii.module.js';
@@ -16,31 +17,41 @@ import {
   INVOICE_REPOSITORY_TOKEN,
   InvoiceRepository
 } from '../../domain/dte/ports/invoice.repository.js';
+import { ISSUER_REPOSITORY_TOKEN } from '../../domain/dte/ports/issuer.repository.js';
 import { MongoInvoiceRepository } from '../../infrastructure/persistence/mongo/mongo-invoice.repository.js';
+import { MongoIssuerRepository } from '../../infrastructure/persistence/mongo/mongo-issuer.repository.js';
 import { StampInvoiceUseCase } from '../../application/use-cases/stamp-invoice.use-case.js';
 import { BuildDteXmlUseCase } from '../../application/use-cases/build-dte-xml.use-case.js';
 import { SignDteUseCase } from '../../application/use-cases/sign-dte.use-case.js';
 import { CreateEnvioDteUseCase } from '../../application/use-cases/create-envio-dte.use-case.js';
 import { SubmitEnvioDteUseCase } from '../../application/use-cases/submit-envio-dte.use-case.js';
 import { IssueInvoiceUseCase } from '../../application/use-cases/issue-invoice.use-case.js';
+import { InvoicesController } from './invoices.controller.js';
+import { TenantsController } from './tenants.controller.js';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: 'Invoice', schema: InvoiceSchema }]),
+    MongooseModule.forFeature([
+      { name: 'Invoice', schema: InvoiceSchema },
+      { name: 'Issuer', schema: IssuerSchema }
+    ]),
     CertificateModule,
     FolioModule,
     forwardRef(() => SiiModule)
   ],
+  controllers: [InvoicesController, TenantsController],
   providers: [
     {
       provide: INVOICE_REPOSITORY_TOKEN,
       useClass: MongoInvoiceRepository
     },
     {
+      provide: ISSUER_REPOSITORY_TOKEN,
+      useClass: MongoIssuerRepository
+    },
+    {
       provide: StampInvoiceUseCase,
-      useFactory: (folioRepo: FolioRepository) =>
-        new StampInvoiceUseCase(folioRepo),
-      inject: [FOLIO_REPOSITORY_TOKEN]
+      useClass: StampInvoiceUseCase
     },
     {
       provide: BuildDteXmlUseCase,
@@ -94,6 +105,7 @@ import { IssueInvoiceUseCase } from '../../application/use-cases/issue-invoice.u
   ],
   exports: [
     INVOICE_REPOSITORY_TOKEN,
+    ISSUER_REPOSITORY_TOKEN,
     StampInvoiceUseCase,
     BuildDteXmlUseCase,
     SignDteUseCase,

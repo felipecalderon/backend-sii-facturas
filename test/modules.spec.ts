@@ -51,6 +51,8 @@ describe('NestJS Modules & Dependency Injection (M7)', () => {
       .useValue({})
       .overrideProvider(getModelToken('Invoice'))
       .useValue({})
+      .overrideProvider(getModelToken('Issuer'))
+      .useValue({})
       .compile();
   });
 

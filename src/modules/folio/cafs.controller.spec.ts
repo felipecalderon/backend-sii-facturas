@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import type { Response } from 'express';
 import { CafsController } from './cafs.controller.js';
 import { ImportCafUseCase } from '../../application/use-cases/import-caf.use-case.js';
 import {
@@ -12,6 +13,7 @@ describe('CafsController', () => {
   let controller: CafsController;
   let importCafUseCaseMock: Partial<ImportCafUseCase>;
   let folioRepositoryMock: Partial<FolioRepository>;
+  let resMock: Partial<Response>;
 
   beforeEach(() => {
     importCafUseCaseMock = {
@@ -22,7 +24,8 @@ describe('CafsController', () => {
         rangoHasta: 100,
         fechaAutorizacion: new Date('2025-01-15'),
         rutEmisor: '76123456-7',
-        totalFolios: 100
+        totalFolios: 100,
+        created: true
       })
     };
 
@@ -34,6 +37,10 @@ describe('CafsController', () => {
         disponibles: 90,
         activo: true
       } as FolioStatus)
+    };
+
+    resMock = {
+      status: vi.fn().mockReturnThis()
     };
 
     controller = new CafsController(
@@ -52,7 +59,11 @@ describe('CafsController', () => {
         size: xmlPayload.length
       };
 
-      const result = await controller.importCaf('tenant-123', file);
+      const result = await controller.importCaf(
+        'tenant-123',
+        file,
+        resMock as Response
+      );
 
       expect(importCafUseCaseMock.execute).toHaveBeenCalledWith({
         tenantId: 'tenant-123',
@@ -60,11 +71,42 @@ describe('CafsController', () => {
       });
       expect(result.tipoDte).toBe(33);
       expect(result.totalFolios).toBe(100);
+      expect(result.created).toBe(true);
+      expect(resMock.status).toHaveBeenCalledWith(201);
+    });
+
+    it('debe responder HTTP 200 cuando el CAF ya estaba registrado (reimportación idéntica)', async () => {
+      vi.mocked(importCafUseCaseMock.execute!).mockResolvedValue({
+        tenantId: 'tenant-123',
+        tipoDte: 33,
+        rangoDesde: 1,
+        rangoHasta: 100,
+        fechaAutorizacion: new Date('2025-01-15'),
+        rutEmisor: '76123456-7',
+        totalFolios: 100,
+        created: false
+      });
+
+      const file: UploadedFilePayload = {
+        originalname: 'folio_33.xml',
+        mimetype: 'application/xml',
+        buffer: Buffer.from('<AUTORIZACION><CAF>test</CAF></AUTORIZACION>'),
+        size: 39
+      };
+
+      const result = await controller.importCaf(
+        'tenant-123',
+        file,
+        resMock as Response
+      );
+
+      expect(result.created).toBe(false);
+      expect(resMock.status).toHaveBeenCalledWith(200);
     });
 
     it('debe arrojar BadRequestException si no se envía archivo en campo file', async () => {
       await expect(
-        controller.importCaf('tenant-123', undefined)
+        controller.importCaf('tenant-123', undefined, resMock as Response)
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -77,7 +119,7 @@ describe('CafsController', () => {
       };
 
       await expect(
-        controller.importCaf('tenant-123', emptyFile)
+        controller.importCaf('tenant-123', emptyFile, resMock as Response)
       ).rejects.toThrow(BadRequestException);
     });
   });

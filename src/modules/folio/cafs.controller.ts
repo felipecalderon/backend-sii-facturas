@@ -9,8 +9,10 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
-  NotFoundException
+  NotFoundException,
+  Res
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -49,13 +51,13 @@ export class CafsController {
   ) {}
 
   @Post('cafs')
-  @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Importar CAF (Código de Autorización de Folios) en formato XML',
     description:
       'Carga el archivo CAF emitido por el SII en formato XML vía multipart/form-data. ' +
-      'Extrae el rango autorizado, la clave privada RSA asociada para timbrar TEDs, y desactiva CAFs previos del mismo tipo DTE para el tenant.'
+      'Extrae el rango autorizado y la clave privada RSA asociada para timbrar TEDs. ' +
+      'Si el CAF ya fue importado para el tenant, la operación es idempotente y no modifica el estado de folios.'
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -74,7 +76,13 @@ export class CafsController {
   })
   @ApiResponse({
     status: 201,
-    description: 'CAF parseado, validado y registrado exitosamente.'
+    description:
+      'CAF parseado, validado y registrado exitosamente por primera vez.'
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'CAF idéntico ya registrado para el tenant; no se realizaron cambios de estado.'
   })
   @ApiResponse({
     status: 400,
@@ -82,7 +90,8 @@ export class CafsController {
   })
   public async importCaf(
     @TenantId() tenantId: string,
-    @UploadedFile() file: UploadedFilePayload | undefined
+    @UploadedFile() file: UploadedFilePayload | undefined,
+    @Res({ passthrough: true }) res: Response
   ): Promise<ImportCafResult> {
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException(
@@ -92,10 +101,13 @@ export class CafsController {
 
     const xmlContent = file.buffer.toString('utf-8');
 
-    return this.importCafUseCase.execute({
+    const result = await this.importCafUseCase.execute({
       tenantId,
       xmlContent
     });
+
+    res.status(result.created ? HttpStatus.CREATED : HttpStatus.OK);
+    return result;
   }
 
   @Get('folios/status')

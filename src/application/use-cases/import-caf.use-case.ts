@@ -15,6 +15,7 @@ export interface ImportCafResult {
   fechaAutorizacion: Date;
   rutEmisor: string;
   totalFolios: number;
+  created: boolean;
 }
 
 export class ImportCafUseCase {
@@ -35,16 +36,17 @@ export class ImportCafUseCase {
       activo: true
     });
 
-    await this.folioRepository.saveCaf(caf);
+    const saved = await this.folioRepository.saveCaf(caf);
 
     return {
-      tenantId: caf.tenantId,
-      tipoDte: caf.tipoDte.code,
-      rangoDesde: caf.rangoDesde,
-      rangoHasta: caf.rangoHasta,
-      fechaAutorizacion: caf.fechaAutorizacion,
-      rutEmisor: caf.rutEmisor.toCanonical(),
-      totalFolios: caf.rangoHasta - caf.rangoDesde + 1
+      tenantId: saved.caf.tenantId,
+      tipoDte: saved.caf.tipoDte.code,
+      rangoDesde: saved.caf.rangoDesde,
+      rangoHasta: saved.caf.rangoHasta,
+      fechaAutorizacion: saved.caf.fechaAutorizacion,
+      rutEmisor: saved.caf.rutEmisor.toCanonical(),
+      totalFolios: saved.caf.rangoHasta - saved.caf.rangoDesde + 1,
+      created: saved.created
     };
   }
 }

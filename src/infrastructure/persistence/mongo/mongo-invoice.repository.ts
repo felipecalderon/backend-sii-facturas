@@ -34,7 +34,7 @@ export class MongoInvoiceRepository implements InvoiceRepository {
       await this.invoiceModel.findOneAndUpdate(
         { tenantId: invoice.tenantId, idempotencyKey: invoice.idempotencyKey },
         { $set: data },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
       return;
     }
@@ -47,7 +47,7 @@ export class MongoInvoiceRepository implements InvoiceRepository {
           folio: invoice.folio
         },
         { $set: data },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
       return;
     }

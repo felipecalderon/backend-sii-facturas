@@ -9,8 +9,13 @@ export interface FolioStatus {
   activo: boolean;
 }
 
+export interface SaveCafResult {
+  caf: Caf;
+  created: boolean;
+}
+
 export interface FolioRepository {
-  saveCaf(caf: Caf): Promise<void>;
+  saveCaf(caf: Caf): Promise<SaveCafResult>;
   findActiveCaf(tenantId: string, tipoDte: TipoDte): Promise<Caf | null>;
   allocateNextFolio(
     tenantId: string,

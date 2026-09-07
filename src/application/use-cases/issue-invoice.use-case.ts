@@ -118,7 +118,8 @@ export class IssueInvoiceUseCase {
     // 4. Timbrar el DTE (TED firmado con clave privada del CAF)
     await this.stampInvoiceUseCase.execute({
       tenantId: dto.tenantId,
-      invoice
+      invoice,
+      caf: allocation.caf
     });
 
     // 5. Generar XML canónico del DTE y validar contra XSD
