@@ -31,7 +31,9 @@ describe('TenantsController', () => {
         comuna: 'Providencia',
         ciudad: 'Santiago',
         correo: 'facturacion@demo.cl',
-        telefono: '+56911223344'
+        telefono: '+56911223344',
+        fchResol: '2026-09-01',
+        nroResol: 80
       };
 
       const result = await controller.configureIssuer('tenant-1', dto);
@@ -47,7 +49,9 @@ describe('TenantsController', () => {
         comuna: 'Providencia',
         ciudad: 'Santiago',
         correo: 'facturacion@demo.cl',
-        telefono: '+56911223344'
+        telefono: '+56911223344',
+        fchResol: '2026-09-01',
+        nroResol: 80
       });
     });
   });
@@ -60,7 +64,9 @@ describe('TenantsController', () => {
         giro: 'Servicios de TI',
         actividadEconomica: 620100,
         direccion: 'Av. Providencia 1234',
-        comuna: 'Providencia'
+        comuna: 'Providencia',
+        fchResol: '2026-09-01',
+        nroResol: 80
       });
 
       vi.mocked(issuerRepositoryMock.findByTenantId!).mockResolvedValue(issuer);
@@ -73,6 +79,8 @@ describe('TenantsController', () => {
       expect(result.rut).toBe('76192456-7');
       expect(result.razonSocial).toBe('Empresa Demo SpA');
       expect(result.tenantId).toBe('tenant-1');
+      expect(result.fchResol).toBe('2026-09-01');
+      expect(result.nroResol).toBe(80);
     });
 
     it('debe lanzar NotFoundException si el tenant no tiene emisor configurado', async () => {

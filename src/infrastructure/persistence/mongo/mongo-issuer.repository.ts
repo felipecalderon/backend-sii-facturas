@@ -31,7 +31,9 @@ export class MongoIssuerRepository implements IssuerRepository {
         comuna: issuer.comuna,
         ciudad: issuer.ciudad,
         correo: issuer.correo,
-        telefono: issuer.telefono
+        telefono: issuer.telefono,
+        ...(issuer.fchResol !== undefined ? { fchResol: issuer.fchResol } : {}),
+        ...(issuer.nroResol !== undefined ? { nroResol: issuer.nroResol } : {})
       },
       { upsert: true, returnDocument: 'after' }
     );
@@ -56,7 +58,9 @@ export class MongoIssuerRepository implements IssuerRepository {
       comuna: doc.comuna,
       ciudad: doc.ciudad,
       correo: doc.correo,
-      telefono: doc.telefono
+      telefono: doc.telefono,
+      fchResol: doc.fchResol,
+      nroResol: doc.nroResol
     });
   }
 }

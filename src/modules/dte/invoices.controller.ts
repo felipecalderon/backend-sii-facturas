@@ -151,7 +151,6 @@ export class InvoicesController {
       items,
       tasaIva: dto.tasaIva,
       idempotencyKey,
-      rutSender: dto.rutSender,
       environment: env,
       validateXsd: dto.validateXsd ?? true
     });

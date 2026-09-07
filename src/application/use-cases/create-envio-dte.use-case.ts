@@ -14,8 +14,8 @@ export interface CreateEnvioDteDto {
   invoices: Invoice[];
   rutEnvia: string;
   rutReceptor?: string;
-  fchResol?: string;
-  nroResol?: number;
+  fchResol: string;
+  nroResol: number;
 }
 
 export interface CreateEnvioDteResult {

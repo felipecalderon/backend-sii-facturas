@@ -7,8 +7,8 @@ export interface EnvioDteOptions {
   rutEmisor: Rut;
   rutEnvia: Rut;
   rutReceptor?: Rut; // Por defecto '60803000-K' del SII
-  fchResol?: string; // Formato AAAA-MM-DD
-  nroResol?: number;
+  fchResol: string; // Formato AAAA-MM-DD
+  nroResol: number;
   tmstFirmaEnv?: Date;
   tipoDte?: number;
 }
@@ -30,8 +30,23 @@ export class EnvioDteBuilder {
     const rutReceptorStr = (
       options.rutReceptor ?? Rut.of('60803000-K')
     ).toCanonical();
-    const fchResol = options.fchResol ?? '2003-09-02';
-    const nroResol = options.nroResol ?? 0;
+    const fchResol = options.fchResol;
+    const nroResol = options.nroResol;
+    if (!fchResol || !/^\d{4}-\d{2}-\d{2}$/.test(fchResol)) {
+      throw new FiscalValidationError(
+        'La carátula del EnvioDTE requiere fchResol (AAAA-MM-DD) con la fecha de la resolución de autorización del emisor'
+      );
+    }
+    if (
+      typeof nroResol !== 'number' ||
+      !Number.isInteger(nroResol) ||
+      nroResol < 0 ||
+      nroResol > 999999
+    ) {
+      throw new FiscalValidationError(
+        'La carátula del EnvioDTE requiere nroResol entero entre 0 y 999999 con el número de la resolución de autorización del emisor'
+      );
+    }
     const tipoDte = options.tipoDte ?? 33;
     const nroDte = signedDteXmls.length;
 

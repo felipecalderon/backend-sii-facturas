@@ -59,7 +59,9 @@ export class TenantsController {
       comuna: dto.comuna,
       ciudad: dto.ciudad,
       correo: dto.correo,
-      telefono: dto.telefono
+      telefono: dto.telefono,
+      fchResol: dto.fchResol,
+      nroResol: dto.nroResol
     });
 
     await this.issuerRepository.save(tenantId, issuer);
@@ -74,7 +76,9 @@ export class TenantsController {
       comuna: issuer.comuna,
       ciudad: issuer.ciudad,
       correo: issuer.correo,
-      telefono: issuer.telefono
+      telefono: issuer.telefono,
+      fchResol: issuer.fchResol,
+      nroResol: issuer.nroResol
     };
   }
 
@@ -115,7 +119,9 @@ export class TenantsController {
       comuna: issuer.comuna,
       ciudad: issuer.ciudad,
       correo: issuer.correo,
-      telefono: issuer.telefono
+      telefono: issuer.telefono,
+      fchResol: issuer.fchResol,
+      nroResol: issuer.nroResol
     };
   }
 }

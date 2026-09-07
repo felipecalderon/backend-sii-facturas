@@ -12,6 +12,8 @@ export interface IssuerDocument extends Document {
   ciudad?: string;
   correo?: string;
   telefono?: string;
+  fchResol?: string;
+  nroResol?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,7 +29,9 @@ export const IssuerSchema = new Schema<IssuerDocument>(
     comuna: { type: String, required: true },
     ciudad: { type: String, required: false },
     correo: { type: String, required: false },
-    telefono: { type: String, required: false }
+    telefono: { type: String, required: false },
+    fchResol: { type: String, required: false },
+    nroResol: { type: Number, required: false }
   },
   {
     timestamps: true,

@@ -13,7 +13,6 @@ import { BuildDteXmlUseCase } from './build-dte-xml.use-case.js';
 import { SignDteUseCase } from './sign-dte.use-case.js';
 import { CreateEnvioDteUseCase } from './create-envio-dte.use-case.js';
 import { SubmitEnvioDteUseCase } from './submit-envio-dte.use-case.js';
-import { Rut } from '../../domain/shared/rut.vo.js';
 import { SiiEnvironment } from '../../domain/sii/values/sii-domain.types.js';
 import { NoActiveCertificateError } from '../../domain/certificate/errors/certificate-domain.error.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
@@ -27,7 +26,6 @@ export interface IssueInvoiceDto {
   items: InvoiceItem[];
   tasaIva?: number;
   idempotencyKey?: string;
-  rutSender?: string;
   environment?: SiiEnvironment;
   validateXsd?: boolean;
 }
@@ -56,6 +54,14 @@ export class IssueInvoiceUseCase {
     if (!dto.tenantId || dto.tenantId.trim().length === 0) {
       throw new FiscalValidationError(
         'El tenantId es obligatorio para emitir una factura'
+      );
+    }
+
+    const fchResol = dto.emisor.fchResol;
+    const nroResol = dto.emisor.nroResol;
+    if (fchResol === undefined || nroResol === undefined) {
+      throw new FiscalValidationError(
+        'El emisor debe tener configurados fchResol y nroResol (resolución de autorización de facturación electrónica) antes de emitir. Configúrelos vía PUT /tenants/issuer.'
       );
     }
 
@@ -92,7 +98,14 @@ export class IssueInvoiceUseCase {
           existing.estado === InvoiceStatus.PERSISTED ||
           existing.estado === InvoiceStatus.UNKNOWN
         ) {
-          return this.transmitInvoice(existing, dto, env, true);
+          return this.transmitInvoice(
+            existing,
+            dto,
+            env,
+            true,
+            fchResol,
+            nroResol
+          );
         }
       }
     }
@@ -140,34 +153,33 @@ export class IssueInvoiceUseCase {
     await this.invoiceRepository.save(invoice);
 
     // 8. Transmitir el documento al SII
-    return this.transmitInvoice(invoice, dto, env, false);
+    return this.transmitInvoice(invoice, dto, env, false, fchResol, nroResol);
   }
 
   private async transmitInvoice(
     invoice: Invoice,
     dto: IssueInvoiceDto,
     env: SiiEnvironment,
-    isDuplicate: boolean
+    isDuplicate: boolean,
+    fchResol: string,
+    nroResol: number
   ): Promise<IssueInvoiceResult> {
-    // Determinar RUT del remitente del EnvioDTE
-    let rutSender: Rut;
-    if (dto.rutSender) {
-      rutSender = Rut.of(dto.rutSender);
-    } else {
-      const activeCert = await this.certificateRepository.findActiveCertificate(
-        dto.tenantId
-      );
-      if (!activeCert) {
-        throw new NoActiveCertificateError(dto.tenantId);
-      }
-      rutSender = activeCert.rutTitular;
+    // El RUT remitente del EnvioDTE siempre es el titular del certificado activo
+    const activeCert = await this.certificateRepository.findActiveCertificate(
+      dto.tenantId
+    );
+    if (!activeCert) {
+      throw new NoActiveCertificateError(dto.tenantId);
     }
+    const rutSender = activeCert.rutTitular;
 
     // Generar y firmar el sobre EnvioDTE
     const envio = await this.createEnvioDteUseCase.execute({
       tenantId: dto.tenantId,
       invoices: [invoice],
-      rutEnvia: rutSender.toCanonical()
+      rutEnvia: rutSender.toCanonical(),
+      fchResol,
+      nroResol
     });
 
     // Transmitir al SII

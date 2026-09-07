@@ -18,7 +18,9 @@ describe('MongoIssuerRepository', () => {
     giro: 'Servicios de TI',
     actividadEconomica: 620100,
     direccion: 'Av. Providencia 1234',
-    comuna: 'Providencia'
+    comuna: 'Providencia',
+    fchResol: '2026-09-01',
+    nroResol: 80
   });
 
   beforeEach(() => {
@@ -41,7 +43,9 @@ describe('MongoIssuerRepository', () => {
         expect.objectContaining({
           tenantId: 'tenant-abc',
           rut: '76192456-7',
-          razonSocial: 'Empresa Test SpA'
+          razonSocial: 'Empresa Test SpA',
+          fchResol: '2026-09-01',
+          nroResol: 80
         }),
         { upsert: true, returnDocument: 'after' }
       );
@@ -73,7 +77,9 @@ describe('MongoIssuerRepository', () => {
             comuna: 'Providencia',
             ciudad: 'Santiago',
             correo: 'contacto@test.cl',
-            telefono: '+56900000000'
+            telefono: '+56900000000',
+            fchResol: '2026-09-01',
+            nroResol: 80
           })
         })
       });
@@ -83,6 +89,8 @@ describe('MongoIssuerRepository', () => {
       expect(result!.rut.toCanonical()).toBe('76192456-7');
       expect(result!.razonSocial).toBe('Empresa Test SpA');
       expect(result!.actividadEconomica).toBe(620100);
+      expect(result!.fchResol).toBe('2026-09-01');
+      expect(result!.nroResol).toBe(80);
     });
   });
 });

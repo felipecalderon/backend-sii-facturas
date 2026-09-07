@@ -60,4 +60,18 @@ export class IssuerResponseDto {
     example: '+56912345678'
   })
   telefono?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Fecha (AAAA-MM-DD) de la resolución de autorización de facturación electrónica del emisor',
+    example: '22-08-2014'
+  })
+  fchResol?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Número de la resolución de autorización de facturación electrónica del emisor',
+    example: 80
+  })
+  nroResol?: number;
 }

@@ -11,6 +11,8 @@ export interface IssuerProps {
   ciudad?: string;
   correo?: string;
   telefono?: string;
+  fchResol?: string; // Fecha de la resolución de autorización (AAAA-MM-DD)
+  nroResol?: number; // Número de la resolución de autorización
 }
 
 export class Issuer {
@@ -23,6 +25,8 @@ export class Issuer {
   public readonly ciudad?: string;
   public readonly correo?: string;
   public readonly telefono?: string;
+  public readonly fchResol?: string;
+  public readonly nroResol?: number;
 
   private constructor(props: IssuerProps) {
     this.rut = props.rut;
@@ -34,6 +38,8 @@ export class Issuer {
     this.ciudad = props.ciudad;
     this.correo = props.correo;
     this.telefono = props.telefono;
+    this.fchResol = props.fchResol;
+    this.nroResol = props.nroResol;
   }
 
   public static create(props: IssuerProps): Issuer {
@@ -85,6 +91,42 @@ export class Issuer {
       );
     }
 
+    if (
+      props.fchResol !== undefined &&
+      !Issuer.isValidIsoDate(props.fchResol)
+    ) {
+      throw new FiscalValidationError(
+        'La fecha de la resolución de autorización (fchResol) debe tener formato AAAA-MM-DD y ser una fecha válida'
+      );
+    }
+
+    if (
+      props.nroResol !== undefined &&
+      (!Number.isInteger(props.nroResol) ||
+        props.nroResol < 0 ||
+        props.nroResol > 999999)
+    ) {
+      throw new FiscalValidationError(
+        'El número de la resolución de autorización (nroResol) debe ser un entero entre 0 y 999999'
+      );
+    }
+
     return new Issuer(props);
+  }
+
+  private static isValidIsoDate(value: string): boolean {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) {
+      return false;
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return (
+      parsed.getUTCFullYear() === year &&
+      parsed.getUTCMonth() === month - 1 &&
+      parsed.getUTCDate() === day
+    );
   }
 }

@@ -136,8 +136,21 @@ describe('EnvioDteBuilder', () => {
     expect(() =>
       EnvioDteBuilder.buildAndSign([], cert, {
         rutEmisor: Rut.of('76123456-0'),
-        rutEnvia: Rut.of('15123456-9')
+        rutEnvia: Rut.of('15123456-9'),
+        fchResol: '2026-09-01',
+        nroResol: 80
       })
+    ).toThrow(FiscalValidationError);
+  });
+
+  it('debe rechazar la construcción si faltan fchResol y nroResol en la carátula', () => {
+    const { signedDteXml, cert } = getSignedDte(103);
+
+    expect(() =>
+      EnvioDteBuilder.buildAndSign([signedDteXml], cert, {
+        rutEmisor: Rut.of('76123456-0'),
+        rutEnvia: Rut.of('15123456-9')
+      } as any)
     ).toThrow(FiscalValidationError);
   });
 });

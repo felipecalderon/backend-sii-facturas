@@ -6,7 +6,6 @@ import {
   IsISO8601,
   IsNumber,
   IsOptional,
-  IsString,
   Max,
   Min,
   ValidateNested
@@ -56,15 +55,6 @@ export class IssueInvoiceDto {
   @Min(0, { message: 'tasaIva no puede ser negativa' })
   @Max(100, { message: 'tasaIva no puede ser mayor a 100' })
   tasaIva?: number;
-
-  @ApiPropertyOptional({
-    description:
-      'RUT del usuario que firma y envía el sobre EnvioDTE al SII (opcional, por defecto el titular del certificado activo)',
-    example: '12345678-5'
-  })
-  @IsOptional()
-  @IsString({ message: 'rutSender debe ser una cadena de texto' })
-  rutSender?: string;
 
   @ApiPropertyOptional({
     description: 'Entorno de destino del SII (CERTIFICATION o PRODUCTION)',

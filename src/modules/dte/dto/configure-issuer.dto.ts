@@ -4,6 +4,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
+  Max,
   MaxLength,
   Min
 } from 'class-validator';
@@ -93,4 +95,27 @@ export class ConfigureIssuerDto {
   @IsOptional()
   @IsString({ message: 'El teléfono debe ser una cadena de texto' })
   telefono?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Fecha (AAAA-MM-DD) de la resolución de autorización de facturación electrónica del emisor según SII',
+    example: '2024-12-30'
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'fchResol debe tener formato AAAA-MM-DD'
+  })
+  fchResol?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Número de la resolución de autorización de facturación electrónica del emisor según SII',
+    example: 80
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'nroResol debe ser un número entero' })
+  @Min(0, { message: 'nroResol no puede ser negativo' })
+  @Max(999999, { message: 'nroResol no puede superar 6 dígitos' })
+  nroResol?: number;
 }

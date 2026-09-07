@@ -89,7 +89,9 @@ describe('M6 End-to-End: IssueInvoiceUseCase', () => {
     giro: 'Servicios de TI',
     actividadEconomica: 620100,
     direccion: 'Av. Andrés Bello 2777',
-    comuna: 'Las Condes'
+    comuna: 'Las Condes',
+    fchResol: '2026-09-01',
+    nroResol: 80
   });
 
   const validReceiver = Receiver.create({
@@ -233,6 +235,41 @@ describe('M6 End-to-End: IssueInvoiceUseCase', () => {
     // 6. Transmisión SII y TrackID
     expect(mockSubmitEnvioUseCase.execute).toHaveBeenCalled();
     expect(result.invoice.trackId).toBe('TRACK-SII-998877');
+
+    // La carátula debe enviar la resolución configurada del emisor y el RUT del certificado
+    expect(mockCreateEnvioUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fchResol: '2026-09-01',
+        nroResol: 80,
+        rutEnvia: '76123456-0'
+      })
+    );
+  });
+
+  it('rechaza antes de consumir folio si el emisor no tiene resolución de autorización configurada', async () => {
+    const emisorSinResolucion = Issuer.create({
+      rut: Rut.of('76123456-0'),
+      razonSocial: 'Empresa Emisora SpA',
+      giro: 'Servicios de TI',
+      actividadEconomica: 620100,
+      direccion: 'Av. Andrés Bello 2777',
+      comuna: 'Las Condes'
+    });
+
+    const dto: IssueInvoiceDto = {
+      tenantId,
+      fechaEmision: new Date('2026-09-04'),
+      emisor: emisorSinResolucion,
+      receptor: validReceiver,
+      items: createValidItems(),
+      idempotencyKey: 'idemp-sin-resolucion'
+    };
+
+    await expect(issueInvoiceUseCase.execute(dto)).rejects.toThrow(
+      FiscalValidationError
+    );
+    expect(mockFolioRepo.allocateNextFolio).not.toHaveBeenCalled();
+    expect(inMemoryInvoiceRepo.saveCalls).toHaveLength(0);
   });
 
   it('entrega al timbrado el mismo CAF que asignó el folio', async () => {
