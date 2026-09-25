@@ -42,6 +42,8 @@ import { IdempotencyKey } from '../../infrastructure/http/decorators/idempotency
 import { IssueInvoiceDto } from './dto/issue-invoice.dto.js';
 import { IssueInvoiceResponseDto } from './dto/issue-invoice-response.dto.js';
 import { InvoiceStatusResponseDto } from './dto/invoice-status-response.dto.js';
+import { QueryInvoicesDto } from './dto/query-invoices.dto.js';
+import { PaginatedInvoicesResponseDto } from './dto/paginated-invoices-response.dto.js';
 
 @ApiTags('invoices')
 @Controller('invoices')
@@ -178,6 +180,64 @@ export class InvoicesController {
     };
   }
 
+  @Get()
+  @ApiOperation({
+    summary: 'Listar facturas emitidas con filtros y paginación',
+    description:
+      'Recupera el historial de documentos emitidos para el tenant actual, permitiendo filtrar por tipo de DTE, estado del documento y rango de fechas de emisión, ordenados cronológicamente de forma descendente.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado paginado de facturas emitidas.',
+    type: PaginatedInvoicesResponseDto
+  })
+  public async getInvoices(
+    @TenantId() tenantId: string,
+    @Query() query: QueryInvoicesDto
+  ): Promise<PaginatedInvoicesResponseDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const result = await this.invoiceRepository.findMany({
+      tenantId,
+      tipoDte: query.tipoDte ? TipoDte.of(query.tipoDte) : undefined,
+      estado: query.estado,
+      desde: query.desde ? new Date(query.desde) : undefined,
+      hasta: query.hasta ? new Date(query.hasta) : undefined,
+      page,
+      limit
+    });
+
+    const totalPages = Math.ceil(result.total / limit);
+
+    return {
+      items: result.items.map((inv) => ({
+        folio: inv.folio!,
+        tipoDte: inv.tipoDte.code,
+        fechaEmision: inv.fechaEmision,
+        receptor: {
+          rut: inv.receptor.rut.toCanonical(),
+          razonSocial: inv.receptor.razonSocial
+        },
+        totales: {
+          montoNeto: inv.totales.montoNeto.toClpInteger(),
+          montoExento: inv.totales.montoExento.toClpInteger(),
+          tasaIva: inv.totales.tasaIva,
+          montoIva: inv.totales.montoIva.toClpInteger(),
+          montoTotal: inv.totales.montoTotal.toClpInteger(),
+          currency: inv.totales.montoTotal.currency
+        },
+        estado: inv.estado,
+        trackId: inv.trackId,
+        glosaRechazo: inv.glosaRechazo
+      })),
+      total: result.total,
+      page,
+      limit,
+      totalPages: totalPages === 0 ? 1 : totalPages
+    };
+  }
+
   @Get(':folio/status')
   @ApiOperation({
     summary: 'Consultar y sincronizar estado del DTE con el SII',
@@ -261,5 +321,78 @@ export class InvoicesController {
       siiStatus,
       glosa: glosa ?? invoice.glosaRechazo
     };
+  }
+
+  @Get(':folio/xml')
+  @ApiOperation({
+    summary: 'Descargar XML oficial firmado del DTE',
+    description:
+      'Recupera el documento XML firmado (<DTE>) emitido y timbrado con TED, listo para intercambio legal o respaldo tributario.'
+  })
+  @ApiParam({
+    name: 'folio',
+    type: Number,
+    description: 'Folio correlativo del documento',
+    example: 105
+  })
+  @ApiQuery({
+    name: 'tipoDte',
+    type: Number,
+    required: false,
+    description:
+      'Código del tipo de DTE (por defecto 33 = Factura Electrónica)',
+    example: 33
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Contenido XML oficial del DTE firmado.',
+    content: {
+      'application/xml': {
+        schema: {
+          type: 'string',
+          example: '<?xml version="1.0" encoding="ISO-8859-1"?><DTE>...</DTE>'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description:
+      'No se encontró la factura o no cuenta con XML firmado disponible.'
+  })
+  public async getInvoiceXml(
+    @TenantId() tenantId: string,
+    @Param('folio', ParseIntPipe) folio: number,
+    @Query('tipoDte') tipoDteParam: string | undefined,
+    @Res() res: Response
+  ): Promise<void> {
+    const tipoDteCode = tipoDteParam ? parseInt(tipoDteParam, 10) : 33;
+    const tipoDteVo = TipoDte.of(tipoDteCode);
+
+    const invoice = await this.invoiceRepository.findByFolio(
+      tenantId,
+      tipoDteVo,
+      folio
+    );
+
+    if (!invoice) {
+      throw new NotFoundException(
+        `No se encontró la factura con folio ${folio} y tipo DTE ${tipoDteCode} para el tenant '${tenantId}'`
+      );
+    }
+
+    const xmlContent = invoice.signedDteXml;
+    if (!xmlContent) {
+      throw new NotFoundException(
+        `La factura con folio ${folio} y tipo DTE ${tipoDteCode} no cuenta con XML firmado disponible`
+      );
+    }
+
+    res.setHeader('Content-Type', 'application/xml; charset=iso-8859-1');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="dte-${tipoDteCode}-${folio}.xml"`
+    );
+    res.status(HttpStatus.OK).send(xmlContent);
   }
 }

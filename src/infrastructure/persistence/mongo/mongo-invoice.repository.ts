@@ -1,7 +1,10 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
-import { InvoiceRepository } from '../../../domain/dte/ports/invoice.repository.js';
+import {
+  InvoiceRepository,
+  FindInvoicesFilters,
+  PaginatedResult
+} from '../../../domain/dte/ports/invoice.repository.js';
 import {
   Invoice,
   InvoiceStatus
@@ -14,6 +17,7 @@ import { Receiver } from '../../../domain/dte/entities/receiver.entity.js';
 import { InvoiceItem } from '../../../domain/dte/entities/invoice-item.entity.js';
 import { InvoiceTotals } from '../../../domain/dte/values/invoice-totals.vo.js';
 import { InvoiceDocument, getInvoiceModel } from './schemas/invoice.schema.js';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class MongoInvoiceRepository implements InvoiceRepository {
@@ -83,6 +87,52 @@ export class MongoInvoiceRepository implements InvoiceRepository {
       .exec();
 
     return doc ? this.toDomain(doc) : null;
+  }
+
+  public async findMany(
+    filters: FindInvoicesFilters
+  ): Promise<PaginatedResult<Invoice>> {
+    const page = Math.max(1, filters.page ?? 1);
+    const limit = Math.max(1, Math.min(100, filters.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const query: Record<string, unknown> = {
+      tenantId: filters.tenantId
+    };
+
+    if (filters.tipoDte) {
+      query.tipoDte = filters.tipoDte.code;
+    }
+
+    if (filters.estado) {
+      query.estado = filters.estado;
+    }
+
+    if (filters.desde || filters.hasta) {
+      const dateFilter: Record<string, Date> = {};
+      if (filters.desde) {
+        dateFilter.$gte = filters.desde;
+      }
+      if (filters.hasta) {
+        dateFilter.$lte = filters.hasta;
+      }
+      query.fechaEmision = dateFilter;
+    }
+
+    const [docs, total] = await Promise.all([
+      this.invoiceModel
+        .find(query)
+        .sort({ fechaEmision: -1, folio: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.invoiceModel.countDocuments(query).exec()
+    ]);
+
+    return {
+      items: docs.map((doc) => this.toDomain(doc)),
+      total
+    };
   }
 
   private toDocumentData(invoice: Invoice): Record<string, unknown> {
