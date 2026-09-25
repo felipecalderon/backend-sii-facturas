@@ -98,8 +98,8 @@ export class ConfigureIssuerDto {
 
   @ApiPropertyOptional({
     description:
-      'Fecha (AAAA-MM-DD) de la resolución de autorización de facturación electrónica del emisor según SII',
-    example: '2024-12-30'
+      'Fecha (AAAA-MM-DD) de la resolución de autorización del emisor. En Certificación debe ser estrictamente "2014-08-22" (o la fecha indicada por el SII en su set de pruebas). En Producción use la fecha de la resolución real otorgada.',
+    example: '2014-08-22'
   })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
@@ -109,8 +109,8 @@ export class ConfigureIssuerDto {
 
   @ApiPropertyOptional({
     description:
-      'Número de la resolución de autorización de facturación electrónica del emisor según SII',
-    example: 80
+      'Número de resolución de autorización del emisor. En Certificación debe ser obligatoriamente 0 (cero) para evitar el rechazo de la carátula EnvioDTE. En Producción use el número de resolución oficial asignado por el SII.',
+    example: 0
   })
   @IsOptional()
   @Type(() => Number)

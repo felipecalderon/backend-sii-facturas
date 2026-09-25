@@ -63,15 +63,15 @@ export class IssuerResponseDto {
 
   @ApiPropertyOptional({
     description:
-      'Fecha (AAAA-MM-DD) de la resolución de autorización de facturación electrónica del emisor',
-    example: '22-08-2014'
+      'Fecha (AAAA-MM-DD) de la resolución de autorización del emisor (2014-08-22 en Certificación)',
+    example: '2014-08-22'
   })
   fchResol?: string;
 
   @ApiPropertyOptional({
     description:
-      'Número de la resolución de autorización de facturación electrónica del emisor',
-    example: 80
+      'Número de la resolución de autorización del emisor (0 en Certificación)',
+    example: 0
   })
   nroResol?: number;
 }
