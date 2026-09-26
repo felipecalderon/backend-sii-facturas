@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import { InvoicesController } from './invoices.controller.js';
 import { IssueInvoiceUseCase } from '../../application/use-cases/issue-invoice.use-case.js';
 import { QueryEnvioStatusUseCase } from '../../application/use-cases/query-envio-status.use-case.js';
+import { GenerateDtePdfUseCase } from '../../application/use-cases/generate-dte-pdf.use-case.js';
 import { IssuerRepository } from '../../domain/dte/ports/issuer.repository.js';
 import { InvoiceRepository } from '../../domain/dte/ports/invoice.repository.js';
 import { Issuer } from '../../domain/dte/entities/issuer.entity.js';
@@ -20,6 +21,7 @@ describe('InvoicesController', () => {
   let controller: InvoicesController;
   let issueInvoiceUseCaseMock: Partial<IssueInvoiceUseCase>;
   let queryEnvioStatusUseCaseMock: Partial<QueryEnvioStatusUseCase>;
+  let generateDtePdfUseCaseMock: Partial<GenerateDtePdfUseCase>;
   let issuerRepositoryMock: Partial<IssuerRepository>;
   let invoiceRepositoryMock: Partial<InvoiceRepository>;
   let resMock: Partial<Response>;
@@ -39,6 +41,10 @@ describe('InvoicesController', () => {
     };
 
     queryEnvioStatusUseCaseMock = {
+      execute: vi.fn()
+    };
+
+    generateDtePdfUseCaseMock = {
       execute: vi.fn()
     };
 
@@ -63,6 +69,7 @@ describe('InvoicesController', () => {
     controller = new InvoicesController(
       issueInvoiceUseCaseMock as IssueInvoiceUseCase,
       queryEnvioStatusUseCaseMock as QueryEnvioStatusUseCase,
+      generateDtePdfUseCaseMock as GenerateDtePdfUseCase,
       issuerRepositoryMock as IssuerRepository,
       invoiceRepositoryMock as InvoiceRepository
     );
@@ -498,6 +505,60 @@ describe('InvoicesController', () => {
       expect(result.limit).toBe(20);
       expect(result.totalPages).toBe(1);
       expect(result.items).toHaveLength(0);
+    });
+  });
+
+  describe('getInvoicePdf (GET /invoices/:folio/pdf)', () => {
+    it('debe enviar el buffer PDF con cabecera application/pdf y HTTP 200', async () => {
+      const fakePdfBuffer = Buffer.from('%PDF-1.4 test data');
+      vi.mocked(generateDtePdfUseCaseMock.execute!).mockResolvedValue({
+        pdfBuffer: fakePdfBuffer,
+        filename: 'dte-33-105.pdf'
+      });
+
+      await controller.getInvoicePdf(
+        'tenant-1',
+        105,
+        '33',
+        resMock as Response
+      );
+
+      expect(generateDtePdfUseCaseMock.execute).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        folio: 105,
+        tipoDte: 33
+      });
+      expect(resMock.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'application/pdf'
+      );
+      expect(resMock.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="dte-33-105.pdf"'
+      );
+      expect(resMock.setHeader).toHaveBeenCalledWith(
+        'Content-Length',
+        fakePdfBuffer.length.toString()
+      );
+      expect(resMock.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(resMock.send).toHaveBeenCalledWith(fakePdfBuffer);
+    });
+
+    it('debe lanzar NotFoundException si el caso de uso arroja FiscalValidationError', async () => {
+      const { FiscalValidationError } =
+        await import('../../domain/dte/errors/fiscal-domain.error.js');
+      vi.mocked(generateDtePdfUseCaseMock.execute!).mockRejectedValue(
+        new FiscalValidationError('Factura no encontrada')
+      );
+
+      await expect(
+        controller.getInvoicePdf(
+          'tenant-1',
+          999,
+          undefined,
+          resMock as Response
+        )
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

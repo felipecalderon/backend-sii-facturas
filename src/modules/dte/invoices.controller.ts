@@ -23,6 +23,8 @@ import {
 } from '@nestjs/swagger';
 import { IssueInvoiceUseCase } from '../../application/use-cases/issue-invoice.use-case.js';
 import { QueryEnvioStatusUseCase } from '../../application/use-cases/query-envio-status.use-case.js';
+import { GenerateDtePdfUseCase } from '../../application/use-cases/generate-dte-pdf.use-case.js';
+import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 import {
   ISSUER_REPOSITORY_TOKEN,
   type IssuerRepository
@@ -51,6 +53,7 @@ export class InvoicesController {
   constructor(
     private readonly issueInvoiceUseCase: IssueInvoiceUseCase,
     private readonly queryEnvioStatusUseCase: QueryEnvioStatusUseCase,
+    private readonly generateDtePdfUseCase: GenerateDtePdfUseCase,
     @Inject(ISSUER_REPOSITORY_TOKEN)
     private readonly issuerRepository: IssuerRepository,
     @Inject(INVOICE_REPOSITORY_TOKEN)
@@ -394,5 +397,73 @@ export class InvoicesController {
       `attachment; filename="dte-${tipoDteCode}-${folio}.xml"`
     );
     res.status(HttpStatus.OK).send(xmlContent);
+  }
+
+  @Get(':folio/pdf')
+  @ApiOperation({
+    summary: 'Descargar representación gráfica oficial en PDF del DTE',
+    description:
+      'Genera el documento tributario electrónico en formato PDF conforme a las normas de diseño e impresión del SII Chile, ' +
+      'incluyendo el timbre electrónico en código de barras bidimensional PDF417 de alta resolución (ECL 5, 3:1, quiet zone >= 0.25").'
+  })
+  @ApiParam({
+    name: 'folio',
+    type: Number,
+    description: 'Folio correlativo del documento',
+    example: 105
+  })
+  @ApiQuery({
+    name: 'tipoDte',
+    type: Number,
+    required: false,
+    description:
+      'Código del tipo de DTE (por defecto 33 = Factura Electrónica)',
+    example: 33
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Documento PDF generado exitosamente.',
+    content: {
+      'application/pdf': {
+        schema: {
+          type: 'string',
+          format: 'binary'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description:
+      'No se encontró la factura o no cuenta con timbre electrónico disponible.'
+  })
+  public async getInvoicePdf(
+    @TenantId() tenantId: string,
+    @Param('folio', ParseIntPipe) folio: number,
+    @Query('tipoDte') tipoDteParam: string | undefined,
+    @Res() res: Response
+  ): Promise<void> {
+    const tipoDteCode = tipoDteParam ? parseInt(tipoDteParam, 10) : 33;
+
+    try {
+      const result = await this.generateDtePdfUseCase.execute({
+        tenantId,
+        folio,
+        tipoDte: tipoDteCode
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.filename}"`
+      );
+      res.setHeader('Content-Length', result.pdfBuffer.length.toString());
+      res.status(HttpStatus.OK).send(result.pdfBuffer);
+    } catch (err: unknown) {
+      if (err instanceof FiscalValidationError) {
+        throw new NotFoundException(err.message);
+      }
+      throw err;
+    }
   }
 }

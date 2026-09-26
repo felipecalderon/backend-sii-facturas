@@ -26,6 +26,7 @@ import { SignDteUseCase } from '../../application/use-cases/sign-dte.use-case.js
 import { CreateEnvioDteUseCase } from '../../application/use-cases/create-envio-dte.use-case.js';
 import { SubmitEnvioDteUseCase } from '../../application/use-cases/submit-envio-dte.use-case.js';
 import { IssueInvoiceUseCase } from '../../application/use-cases/issue-invoice.use-case.js';
+import { GenerateDtePdfUseCase } from '../../application/use-cases/generate-dte-pdf.use-case.js';
 import { InvoicesController } from './invoices.controller.js';
 import { TenantsController } from './tenants.controller.js';
 
@@ -101,6 +102,12 @@ import { TenantsController } from './tenants.controller.js';
         CreateEnvioDteUseCase,
         SubmitEnvioDteUseCase
       ]
+    },
+    {
+      provide: GenerateDtePdfUseCase,
+      useFactory: (invRepo: InvoiceRepository) =>
+        new GenerateDtePdfUseCase(invRepo),
+      inject: [INVOICE_REPOSITORY_TOKEN]
     }
   ],
   exports: [
@@ -111,6 +118,7 @@ import { TenantsController } from './tenants.controller.js';
     SignDteUseCase,
     CreateEnvioDteUseCase,
     IssueInvoiceUseCase,
+    GenerateDtePdfUseCase,
     MongooseModule
   ]
 })

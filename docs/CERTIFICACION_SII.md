@@ -56,14 +56,14 @@ flowchart TD
 
 ---
 
-### Hito C3: Generación de Muestras Impresas (PDF con Timbre PDF417)
+### Hito C3: Generación de Muestras Impresas (PDF con Timbre PDF417) [COMPLETADO]
 
-- **Estado:** Aplazado según requerimiento del usuario.
+- **Estado:** Implementado.
 - **Alcance:**
-  1. Definir estrategia técnica para renderizar el documento tributario en PDF sin violar restricciones de dependencias del repositorio.
-  2. Generación del código de barras bidimensional PDF417 codificando exactamente el fragmento `<TED>...</TED>`.
-  3. Endpoint `GET /invoices/:folio/pdf`.
-- **Criterio de Éxito:** Generación de PDF legible que pase la validación visual y de lector óptico exigida por el SII para las muestras impresas.
+  1. Renderizado de documento PDF según estándar gráfico del SII (tamaño Carta, caja fiscal roja con folio, datos emisor/receptor, tabla de ítems, totales y acuse de recibo Ley 19.983).
+  2. Generación del código de barras bidimensional PDF417 normativo oficial con `bwip-js` (Byte Compaction Mode, ECL 5, 3:1 aspect ratio, quiet zone >= 0.25") codificando el fragmento `<TED>...</TED>`.
+  3. Endpoint `GET /invoices/:folio/pdf` con streaming binario y cabecera `application/pdf`.
+- **Criterio de Éxito:** Generación de PDF legible que pasa la validación visual y de lector óptico exigida por el SII para las muestras impresas.
 
 ---
 
