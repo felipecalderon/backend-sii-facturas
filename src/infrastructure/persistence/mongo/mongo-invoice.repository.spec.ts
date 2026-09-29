@@ -146,6 +146,7 @@ describe('MongoInvoiceRepository', () => {
       tedXml: '<TED>test</TED>',
       dteXml: '<DTE>test</DTE>',
       signedDteXml: '<DTE><Signature>test</Signature></DTE>',
+      envioDteXml: '<EnvioDTE><SetDTE></SetDTE></EnvioDTE>',
       trackId: '123456789'
     };
 
@@ -164,6 +165,7 @@ describe('MongoInvoiceRepository', () => {
     expect(result!.folio).toBe(42);
     expect(result!.estado).toBe(InvoiceStatus.SUBMITTED);
     expect(result!.trackId).toBe('123456789');
+    expect(result!.envioDteXml).toBe('<EnvioDTE><SetDTE></SetDTE></EnvioDTE>');
     expect(result!.totales.getNetoClp()).toBe(10000);
     expect(result!.totales.getIvaClp()).toBe(1900);
     expect(result!.totales.getTotalClp()).toBe(11900);

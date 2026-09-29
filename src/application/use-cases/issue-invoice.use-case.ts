@@ -179,8 +179,12 @@ export class IssueInvoiceUseCase {
       invoices: [invoice],
       rutEnvia: rutSender.toCanonical(),
       fchResol,
-      nroResol
+      nroResol,
+      validateXsd: dto.validateXsd
     });
+
+    // El sobre firmado es el XML que efectivamente viaja al SII: se adjunta antes de transmitir
+    invoice.attachEnvioDte(envio.envioDteXml);
 
     // Transmitir al SII
     try {

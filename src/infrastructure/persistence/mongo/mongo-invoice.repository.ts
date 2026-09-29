@@ -188,6 +188,7 @@ export class MongoInvoiceRepository implements InvoiceRepository {
       tedXml: invoice.tedXml,
       dteXml: invoice.dteXml,
       signedDteXml: invoice.signedDteXml,
+      envioDteXml: invoice.envioDteXml,
       trackId: invoice.trackId,
       glosaRechazo: invoice.glosaRechazo,
       observaciones: invoice.observaciones
@@ -259,6 +260,7 @@ export class MongoInvoiceRepository implements InvoiceRepository {
       tedXml: doc.tedXml,
       dteXml: doc.dteXml,
       signedDteXml: doc.signedDteXml,
+      envioDteXml: doc.envioDteXml,
       trackId: doc.trackId,
       glosaRechazo: doc.glosaRechazo,
       observaciones: doc.observaciones ? [...doc.observaciones] : undefined

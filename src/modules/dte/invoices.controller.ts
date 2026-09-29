@@ -330,7 +330,8 @@ export class InvoicesController {
   @ApiOperation({
     summary: 'Descargar XML oficial firmado del DTE',
     description:
-      'Recupera el documento XML firmado (<DTE>) emitido y timbrado con TED, listo para intercambio legal o respaldo tributario.'
+      'Recupera el documento XML firmado (<DTE>) emitido y timbrado con TED, para intercambio con el receptor o respaldo tributario. ' +
+      'No es el archivo de recepción del SII: para enviar al SII use GET /invoices/:folio/envio.'
   })
   @ApiParam({
     name: 'folio',
@@ -395,6 +396,81 @@ export class InvoicesController {
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="dte-${tipoDteCode}-${folio}.xml"`
+    );
+    res.status(HttpStatus.OK).send(xmlContent);
+  }
+
+  @Get(':folio/envio')
+  @ApiOperation({
+    summary: 'Descargar el sobre EnvioDTE firmado',
+    description:
+      'Recupera el XML <EnvioDTE> (SetDTE, Carátula, DTE y firma del sobre) que la emisión transmite al SII. ' +
+      'Este es el archivo que exige la recepción del SII: el DTE suelto no es un envío válido para ese trámite.'
+  })
+  @ApiParam({
+    name: 'folio',
+    type: Number,
+    description: 'Folio correlativo del documento',
+    example: 105
+  })
+  @ApiQuery({
+    name: 'tipoDte',
+    type: Number,
+    required: false,
+    description:
+      'Código del tipo de DTE (por defecto 33 = Factura Electrónica)',
+    example: 33
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Contenido XML del sobre EnvioDTE firmado.',
+    content: {
+      'application/xml': {
+        schema: {
+          type: 'string',
+          example:
+            '<?xml version="1.0" encoding="ISO-8859-1"?><EnvioDTE><SetDTE>...</SetDTE></EnvioDTE>'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description:
+      'No se encontró la factura o no cuenta con sobre EnvioDTE disponible.'
+  })
+  public async getInvoiceEnvioXml(
+    @TenantId() tenantId: string,
+    @Param('folio', ParseIntPipe) folio: number,
+    @Query('tipoDte') tipoDteParam: string | undefined,
+    @Res() res: Response
+  ): Promise<void> {
+    const tipoDteCode = tipoDteParam ? parseInt(tipoDteParam, 10) : 33;
+    const tipoDteVo = TipoDte.of(tipoDteCode);
+
+    const invoice = await this.invoiceRepository.findByFolio(
+      tenantId,
+      tipoDteVo,
+      folio
+    );
+
+    if (!invoice) {
+      throw new NotFoundException(
+        `No se encontró la factura con folio ${folio} y tipo DTE ${tipoDteCode} para el tenant '${tenantId}'`
+      );
+    }
+
+    const xmlContent = invoice.envioDteXml;
+    if (!xmlContent) {
+      throw new NotFoundException(
+        `La factura con folio ${folio} y tipo DTE ${tipoDteCode} no cuenta con sobre EnvioDTE disponible`
+      );
+    }
+
+    res.setHeader('Content-Type', 'application/xml; charset=iso-8859-1');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="envio-${tipoDteCode}-${folio}.xml"`
     );
     res.status(HttpStatus.OK).send(xmlContent);
   }

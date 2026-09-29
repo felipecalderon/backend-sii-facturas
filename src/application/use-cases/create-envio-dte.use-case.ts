@@ -4,6 +4,7 @@ import {
   InvoiceStatus
 } from '../../domain/dte/entities/invoice.entity.js';
 import { EnvioDteBuilder } from '../../infrastructure/xml/envio-dte-builder.js';
+import { XsdValidator } from '../../infrastructure/xml/xsd-validator.js';
 import { Rut } from '../../domain/shared/rut.vo.js';
 import { NoActiveCertificateError } from '../../domain/certificate/errors/certificate-domain.error.js';
 import { TenantMismatchError } from '../../domain/folio/errors/folio-domain.error.js';
@@ -16,6 +17,7 @@ export interface CreateEnvioDteDto {
   rutReceptor?: string;
   fchResol: string;
   nroResol: number;
+  validateXsd?: boolean;
 }
 
 export interface CreateEnvioDteResult {
@@ -78,6 +80,17 @@ export class CreateEnvioDteUseCase {
         tipoDte: dto.invoices[0].tipoDte.code
       }
     );
+
+    // El SII valida la recepción contra EnvioDTE_v10.xsd: un <DTE> suelto no es un envío válido
+    if (dto.validateXsd !== false) {
+      const validation = await XsdValidator.validateEnvioDte(envioDteXml);
+      if (!validation.isValid) {
+        const folios = dto.invoices.map((inv) => inv.folio).join(', ');
+        throw new FiscalValidationError(
+          `Validación XSD del sobre EnvioDTE fallida para los folios ${folios}: ${validation.errors.join(' | ')}`
+        );
+      }
+    }
 
     return {
       envioDteXml,

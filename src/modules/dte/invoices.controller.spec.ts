@@ -421,6 +421,86 @@ describe('InvoicesController', () => {
     });
   });
 
+  describe('getInvoiceEnvioXml (GET /invoices/:folio/envio)', () => {
+    const buildSignedInvoice = (): Invoice => {
+      const receiver = Receiver.create({
+        rut: Rut.of('55666777-2'),
+        razonSocial: 'Cliente SpA',
+        giro: 'Comercio',
+        direccion: 'Calle Falsa 123',
+        comuna: 'Santiago'
+      });
+
+      const item = InvoiceItem.create({
+        linea: 1,
+        nombre: 'Item 1',
+        cantidad: Money.fromDecimal(1, 'CLP'),
+        precioUnitario: Money.fromDecimal(1000, 'CLP')
+      });
+
+      const invoice = Invoice.createDraft({
+        tenantId: 'tenant-1',
+        fechaEmision: new Date(),
+        emisor: sampleIssuer,
+        receptor: receiver,
+        items: [item]
+      });
+      invoice.assignFolio(105);
+      invoice.stampTed('<TED>test</TED>');
+      invoice.setDteXml('<DTE>test</DTE>');
+      invoice.sign('<Signature>firmado</Signature>');
+
+      return invoice;
+    };
+
+    it('debe lanzar NotFoundException si la factura no cuenta con sobre EnvioDTE', async () => {
+      vi.mocked(invoiceRepositoryMock.findByFolio!).mockResolvedValue(
+        buildSignedInvoice()
+      );
+
+      await expect(
+        controller.getInvoiceEnvioXml(
+          'tenant-1',
+          105,
+          '33',
+          resMock as Response
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('debe responder con el sobre EnvioDTE firmado y tipoDte por defecto', async () => {
+      const invoice = buildSignedInvoice();
+      invoice.attachEnvioDte('<EnvioDTE><SetDTE></SetDTE></EnvioDTE>');
+
+      vi.mocked(invoiceRepositoryMock.findByFolio!).mockResolvedValue(invoice);
+
+      await controller.getInvoiceEnvioXml(
+        'tenant-1',
+        105,
+        undefined,
+        resMock as Response
+      );
+
+      expect(invoiceRepositoryMock.findByFolio).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ code: 33 }),
+        105
+      );
+      expect(resMock.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'application/xml; charset=iso-8859-1'
+      );
+      expect(resMock.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="envio-33-105.xml"'
+      );
+      expect(resMock.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(resMock.send).toHaveBeenCalledWith(
+        '<EnvioDTE><SetDTE></SetDTE></EnvioDTE>'
+      );
+    });
+  });
+
   describe('getInvoices (GET /invoices)', () => {
     it('debe listar facturas con filtros y calcular totalPages correctamente', async () => {
       const receiver = Receiver.create({

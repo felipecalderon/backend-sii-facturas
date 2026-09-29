@@ -43,6 +43,7 @@ export interface InvoiceProps {
   tedXml?: string;
   dteXml?: string;
   signedDteXml?: string;
+  envioDteXml?: string;
   trackId?: string;
   glosaRechazo?: string;
   observaciones?: string[];
@@ -61,6 +62,7 @@ export class Invoice {
   private _tedXml?: string;
   private _dteXml?: string;
   private _signedDteXml?: string;
+  private _envioDteXml?: string;
   private _trackId?: string;
   private _glosaRechazo?: string;
   private _observaciones?: string[];
@@ -79,6 +81,7 @@ export class Invoice {
     this._tedXml = props.tedXml;
     this._dteXml = props.dteXml;
     this._signedDteXml = props.signedDteXml;
+    this._envioDteXml = props.envioDteXml;
     this._trackId = props.trackId;
     this._glosaRechazo = props.glosaRechazo;
     this._observaciones = props.observaciones
@@ -209,6 +212,16 @@ export class Invoice {
     this._estado = InvoiceStatus.SIGNED;
   }
 
+  public attachEnvioDte(envioDteXml: string): void {
+    if (!envioDteXml || !envioDteXml.includes('<EnvioDTE')) {
+      throw new FiscalValidationError(
+        'El XML del sobre EnvioDTE es inválido: debe contener el nodo raíz <EnvioDTE>.'
+      );
+    }
+
+    this._envioDteXml = envioDteXml;
+  }
+
   public markPersisted(): void {
     if (this._estado !== InvoiceStatus.SIGNED) {
       throw new FiscalValidationError(
@@ -301,6 +314,10 @@ export class Invoice {
 
   public get signedDteXml(): string | undefined {
     return this._signedDteXml;
+  }
+
+  public get envioDteXml(): string | undefined {
+    return this._envioDteXml;
   }
 
   public get trackId(): string | undefined {

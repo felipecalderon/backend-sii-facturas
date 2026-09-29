@@ -14,6 +14,7 @@ import { Caf } from '../../domain/folio/entities/caf.entity.js';
 import { TipoDte } from '../../domain/dte/values/dte-type.vo.js';
 import { TedSigner } from '../crypto/ted-signer.js';
 import { DteXmlRenderer } from './dte-xml-renderer.js';
+import { XsdValidator } from './xsd-validator.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 
 describe('EnvioDteBuilder', () => {
@@ -128,6 +129,22 @@ describe('EnvioDteBuilder', () => {
       'Consultoría Modificada'
     );
     expect(EnvioDteBuilder.verify(tamperedXml)).toBe(false);
+  });
+
+  it('debe generar un sobre que valida contra el esquema EnvioDTE_v10.xsd', async () => {
+    const { signedDteXml, cert } = getSignedDte(104);
+
+    const envioXml = EnvioDteBuilder.buildAndSign([signedDteXml], cert, {
+      rutEmisor: Rut.of('76123456-0'),
+      rutEnvia: Rut.of('15123456-9'),
+      rutReceptor: Rut.of('60803000-K'),
+      fchResol: '2026-09-01',
+      nroResol: 0
+    });
+
+    const validation = await XsdValidator.validateEnvioDte(envioXml);
+    expect(validation.errors).toEqual([]);
+    expect(validation.isValid).toBe(true);
   });
 
   it('debe rechazar la construcción si no se entregan DTEs', () => {

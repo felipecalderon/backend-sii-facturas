@@ -9,6 +9,7 @@ export interface XsdValidationResult {
 
 export class XsdValidator {
   private static dteXsdContent?: string;
+  private static envioDteXsdContent?: string;
   private static siiTypesXsdContent?: string;
   private static xmldsigXsdContent?: string;
 
@@ -17,23 +18,32 @@ export class XsdValidator {
   ): Promise<XsdValidationResult> {
     XsdValidator.loadSchemas();
 
+    return XsdValidator.validateAgainst(xmlContent, {
+      fileName: 'DTE_v10.xsd',
+      contents: XsdValidator.dteXsdContent!
+    });
+  }
+
+  public static async validateEnvioDte(
+    xmlContent: string
+  ): Promise<XsdValidationResult> {
+    XsdValidator.loadSchemas();
+
+    return XsdValidator.validateAgainst(xmlContent, {
+      fileName: 'EnvioDTE_v10.xsd',
+      contents: XsdValidator.envioDteXsdContent!
+    });
+  }
+
+  private static async validateAgainst(
+    xmlContent: string,
+    schema: { fileName: string; contents: string }
+  ): Promise<XsdValidationResult> {
     try {
       const result = await validateXML({
         xml: xmlContent,
-        schema: {
-          fileName: 'DTE_v10.xsd',
-          contents: XsdValidator.dteXsdContent!
-        },
-        preload: [
-          {
-            fileName: 'SiiTypes_v10.xsd',
-            contents: XsdValidator.siiTypesXsdContent!
-          },
-          {
-            fileName: 'xmldsignature_v10.xsd',
-            contents: XsdValidator.xmldsigXsdContent!
-          }
-        ]
+        schema,
+        preload: XsdValidator.buildPreload(schema.fileName)
       });
 
       return {
@@ -48,6 +58,25 @@ export class XsdValidator {
     }
   }
 
+  private static buildPreload(
+    mainSchemaFileName: string
+  ): Array<{ fileName: string; contents: string }> {
+    return [
+      {
+        fileName: 'DTE_v10.xsd',
+        contents: XsdValidator.dteXsdContent!
+      },
+      {
+        fileName: 'SiiTypes_v10.xsd',
+        contents: XsdValidator.siiTypesXsdContent!
+      },
+      {
+        fileName: 'xmldsignature_v10.xsd',
+        contents: XsdValidator.xmldsigXsdContent!
+      }
+    ].filter((schema) => schema.fileName !== mainSchemaFileName);
+  }
+
   private static loadSchemas(): void {
     if (XsdValidator.dteXsdContent) {
       return;
@@ -56,6 +85,10 @@ export class XsdValidator {
     const schemasDir = path.resolve(process.cwd(), 'docs/schemas-sii');
     XsdValidator.dteXsdContent = fs.readFileSync(
       path.join(schemasDir, 'DTE_v10.xsd'),
+      'utf-8'
+    );
+    XsdValidator.envioDteXsdContent = fs.readFileSync(
+      path.join(schemasDir, 'EnvioDTE_v10.xsd'),
       'utf-8'
     );
     XsdValidator.siiTypesXsdContent = fs.readFileSync(

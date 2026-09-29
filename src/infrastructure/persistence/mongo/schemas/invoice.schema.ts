@@ -59,6 +59,7 @@ export interface InvoiceDocument extends Document {
   tedXml?: string;
   dteXml?: string;
   signedDteXml?: string;
+  envioDteXml?: string;
   trackId?: string;
   glosaRechazo?: string;
   observaciones?: string[];
@@ -119,6 +120,7 @@ export const InvoiceSchema = new Schema<InvoiceDocument>(
     tedXml: { type: String, required: false },
     dteXml: { type: String, required: false },
     signedDteXml: { type: String, required: false },
+    envioDteXml: { type: String, required: false },
     trackId: { type: String, required: false },
     glosaRechazo: { type: String, required: false },
     observaciones: { type: [String], required: false }

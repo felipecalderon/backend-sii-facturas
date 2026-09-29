@@ -37,4 +37,36 @@ describe('XsdValidator', () => {
     expect(result.isValid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
   });
+
+  it('debe validar exitosamente el sobre <EnvioDTE> del ejemplo oficial del SII', async () => {
+    const envioXml = fs.readFileSync(
+      path.resolve(process.cwd(), 'docs/schemas-sii/F60T33-ejemplo.xml'),
+      'utf-8'
+    );
+
+    const result = await XsdValidator.validateEnvioDte(envioXml);
+    expect(result.errors).toEqual([]);
+    expect(result.isValid).toBe(true);
+  });
+
+  it('debe rechazar como EnvioDTE un <DTE> suelto sin sobre, aunque el DTE sea válido', async () => {
+    const ejemploXml = fs.readFileSync(
+      path.resolve(process.cwd(), 'docs/schemas-sii/F60T33-ejemplo.xml'),
+      'utf-8'
+    );
+
+    // Extraer el fragmento <DTE>...</DTE> del ejemplo (documento válido por sí solo)
+    const dteMatch = ejemploXml.match(/<DTE[\s\S]*?<\/DTE>/);
+    expect(dteMatch).toBeDefined();
+
+    const dteXml = `<?xml version="1.0" encoding="ISO-8859-1"?>\n<DTE xmlns="http://www.sii.cl/SiiDte" version="1.0">\n${dteMatch![0].replace(/<DTE[^>]*>|<\/DTE>/g, '')}\n</DTE>`;
+
+    // El DTE suelto es válido contra DTE_v10.xsd, pero no contra EnvioDTE_v10.xsd
+    const comoDte = await XsdValidator.validateDte(dteXml);
+    expect(comoDte.isValid).toBe(true);
+
+    const comoEnvio = await XsdValidator.validateEnvioDte(dteXml);
+    expect(comoEnvio.isValid).toBe(false);
+    expect(comoEnvio.errors.length).toBeGreaterThan(0);
+  });
 });
