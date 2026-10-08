@@ -11,6 +11,7 @@ import { Money } from '../../domain/shared/money.vo.js';
 import { Caf } from '../../domain/folio/entities/caf.entity.js';
 import { TipoDte } from '../../domain/dte/values/dte-type.vo.js';
 import { TedSigner } from '../crypto/ted-signer.js';
+import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 
 describe('DteXmlRenderer', () => {
   const { privateKey } = crypto.generateKeyPairSync('rsa', {
@@ -19,7 +20,9 @@ describe('DteXmlRenderer', () => {
     publicKeyEncoding: { type: 'spki', format: 'pem' }
   });
 
-  const createStampedInvoice = (): Invoice => {
+  const createStampedInvoice = (
+    firstItemName = 'Servidor Rack 1U Xeon'
+  ): Invoice => {
     const inv = Invoice.createDraft({
       tenantId: 'tenant-123',
       fechaEmision: new Date('2026-09-03'),
@@ -43,7 +46,7 @@ describe('DteXmlRenderer', () => {
       items: [
         InvoiceItem.create({
           linea: 1,
-          nombre: 'Servidor Rack 1U Xeon',
+          nombre: firstItemName,
           cantidad: Money.fromInteger(1),
           precioUnitario: Money.fromInteger(500000)
         }),
@@ -86,8 +89,9 @@ describe('DteXmlRenderer', () => {
     const xml = DteXmlRenderer.render(invoice);
 
     expect(xml).toContain('<?xml version="1.0" encoding="ISO-8859-1"?>');
-    expect(xml).toContain(
-      '<DTE xmlns="http://www.sii.cl/SiiDte" version="1.0">'
+    expect(xml).toMatch(/<DTE\b[^>]*\bxmlns="http:\/\/www\.sii\.cl\/SiiDte"/);
+    expect(xml).toMatch(
+      /<DTE\b[^>]*\bxmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance"/
     );
     expect(xml).toContain('<Documento ID="F101T33">');
     expect(xml).toContain('<TipoDTE>33</TipoDTE>');
@@ -102,6 +106,17 @@ describe('DteXmlRenderer', () => {
     expect(xml).toContain(
       '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">'
     );
+  });
+
+  it('debe conservar tildes Latin-1 y rechazar caracteres no representables antes de firmar', () => {
+    const xmlWithAccent = DteXmlRenderer.render(
+      createStampedInvoice('Servidor Purén')
+    );
+    expect(xmlWithAccent).toContain('Servidor Purén');
+
+    expect(() =>
+      DteXmlRenderer.render(createStampedInvoice('Producto 😀'))
+    ).toThrow(FiscalValidationError);
   });
 
   it('debe validar exitosamente el XML generado contra el esquema oficial DTE_v10.xsd', async () => {

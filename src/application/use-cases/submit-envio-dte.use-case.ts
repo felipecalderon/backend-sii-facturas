@@ -9,6 +9,9 @@ import { Rut } from '../../domain/shared/rut.vo.js';
 import { TenantMismatchError } from '../../domain/folio/errors/folio-domain.error.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 import { SiiConnectionError } from '../../domain/sii/errors/sii-domain.error.js';
+import { DteSigner } from '../../infrastructure/crypto/dte-signer.js';
+import { EnvioDteBuilder } from '../../infrastructure/xml/envio-dte-builder.js';
+import { XsdValidator } from '../../infrastructure/xml/xsd-validator.js';
 
 export interface SubmitEnvioDteDto {
   tenantId: string;
@@ -56,6 +59,51 @@ export class SubmitEnvioDteUseCase {
           `La factura Folio ${inv.folio} está en estado ${inv.estado}. Debe estar en SIGNED, PERSISTED o UNKNOWN para envío.`
         );
       }
+    }
+
+    const xsdValidation = await XsdValidator.validateEnvioDte(dto.envioDteXml);
+    if (!xsdValidation.isValid) {
+      const details = xsdValidation.errors.join('; ');
+      throw new FiscalValidationError(
+        `El EnvioDTE no cumple el esquema SII${details ? `: ${details}` : ''}`
+      );
+    }
+
+    const dteCount =
+      dto.envioDteXml.match(/<(?:[A-Za-z_][\w.-]*:)?DTE(?=[\s>])/g)?.length ??
+      0;
+    if (dteCount !== dto.invoices.length) {
+      throw new FiscalValidationError(
+        `El EnvioDTE contiene ${dteCount} DTE, pero se recibieron ${dto.invoices.length} facturas`
+      );
+    }
+
+    const referenceIds = dto.invoices.map((invoice) => {
+      const folio = invoice.folio;
+      if (!folio || folio <= 0) {
+        throw new FiscalValidationError(
+          'Todas las facturas deben tener un folio válido antes del envío'
+        );
+      }
+      return `F${folio}T${invoice.tipoDte.code}`;
+    });
+    if (new Set(referenceIds).size !== referenceIds.length) {
+      throw new FiscalValidationError(
+        'El envío contiene facturas con referencias de Documento duplicadas'
+      );
+    }
+
+    for (const referenceId of referenceIds) {
+      if (!DteSigner.verify(dto.envioDteXml, referenceId)) {
+        throw new FiscalValidationError(
+          `El DTE con referencia ${referenceId} no tiene una firma XMLDSig válida`
+        );
+      }
+    }
+    if (!EnvioDteBuilder.verify(dto.envioDteXml)) {
+      throw new FiscalValidationError(
+        'La firma XMLDSig del SetDTE no es válida'
+      );
     }
 
     const firstInvoice = dto.invoices[0];

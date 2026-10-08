@@ -4,6 +4,7 @@ import path from 'node:path';
 import { XsdValidator } from './xsd-validator.js';
 
 describe('XsdValidator', () => {
+  // El fixture usa valores Base64 de prueba en X509Certificate; aquí solo se valida XSD.
   it('debe validar exitosamente un nodo <DTE> extraído del ejemplo oficial del SII', async () => {
     const ejemploXml = fs.readFileSync(
       path.resolve(process.cwd(), 'docs/schemas-sii/F60T33-ejemplo.xml'),
@@ -67,6 +68,6 @@ describe('XsdValidator', () => {
 
     const comoEnvio = await XsdValidator.validateEnvioDte(dteXml);
     expect(comoEnvio.isValid).toBe(false);
-    expect(comoEnvio.errors.length).toBeGreaterThan(0);
+    expect(comoEnvio.errors).toContain('El elemento raíz debe ser <EnvioDTE>.');
   });
 });

@@ -14,10 +14,15 @@ import { Money } from '../../domain/shared/money.vo.js';
 import { TenantMismatchError } from '../../domain/folio/errors/folio-domain.error.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 import { SiiConnectionError } from '../../domain/sii/errors/sii-domain.error.js';
+import { DteSigner } from '../../infrastructure/crypto/dte-signer.js';
+import { EnvioDteBuilder } from '../../infrastructure/xml/envio-dte-builder.js';
+import { XsdValidator } from '../../infrastructure/xml/xsd-validator.js';
 
 describe('SubmitEnvioDteUseCase', () => {
   let mockAuthUseCase: AuthenticateSiiUseCase;
   let mockSiiGateway: SiiGateway;
+  const validEnvioDteXml =
+    '<EnvioDTE><SetDTE><DTE><Documento ID="F55T33"></Documento></DTE></SetDTE></EnvioDTE>';
 
   const getSignedInvoice = (
     tenantId = 'tenant-submit',
@@ -63,6 +68,14 @@ describe('SubmitEnvioDteUseCase', () => {
   };
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(XsdValidator, 'validateEnvioDte').mockResolvedValue({
+      isValid: true,
+      errors: []
+    });
+    vi.spyOn(DteSigner, 'verify').mockReturnValue(true);
+    vi.spyOn(EnvioDteBuilder, 'verify').mockReturnValue(true);
+
     mockAuthUseCase = {
       execute: vi.fn().mockResolvedValue({
         token: 'MOCK_TOKEN_1234',
@@ -88,7 +101,7 @@ describe('SubmitEnvioDteUseCase', () => {
     const result = await useCase.execute({
       tenantId: 'tenant-submit',
       invoices: [invoice],
-      envioDteXml: '<EnvioDTE><SetDTE></SetDTE></EnvioDTE>',
+      envioDteXml: validEnvioDteXml,
       rutSender: Rut.of('15123456-9'),
       environment: 'CERTIFICATION'
     });
@@ -103,6 +116,86 @@ describe('SubmitEnvioDteUseCase', () => {
       environment: 'CERTIFICATION'
     });
     expect(mockSiiGateway.sendDte).toHaveBeenCalledTimes(1);
+    expect(XsdValidator.validateEnvioDte).toHaveBeenCalledWith(
+      validEnvioDteXml
+    );
+    expect(DteSigner.verify).toHaveBeenCalledWith(validEnvioDteXml, 'F55T33');
+    expect(EnvioDteBuilder.verify).toHaveBeenCalledWith(validEnvioDteXml);
+  });
+
+  it('debe bloquear el envío si falla la validación XSD', async () => {
+    vi.mocked(XsdValidator.validateEnvioDte).mockResolvedValue({
+      isValid: false,
+      errors: ['XML malformado']
+    });
+    const useCase = new SubmitEnvioDteUseCase(mockAuthUseCase, mockSiiGateway);
+    const invoice = getSignedInvoice('tenant-submit', 55);
+
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-submit',
+        invoices: [invoice],
+        envioDteXml: validEnvioDteXml,
+        rutSender: Rut.of('15123456-9')
+      })
+    ).rejects.toThrow(FiscalValidationError);
+
+    expect(mockAuthUseCase.execute).not.toHaveBeenCalled();
+    expect(mockSiiGateway.sendDte).not.toHaveBeenCalled();
+  });
+
+  it('debe bloquear el envío si una firma DTE no coincide con su folio', async () => {
+    vi.mocked(DteSigner.verify).mockReturnValue(false);
+    const useCase = new SubmitEnvioDteUseCase(mockAuthUseCase, mockSiiGateway);
+    const invoice = getSignedInvoice('tenant-submit', 55);
+
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-submit',
+        invoices: [invoice],
+        envioDteXml: validEnvioDteXml,
+        rutSender: Rut.of('15123456-9')
+      })
+    ).rejects.toThrow(FiscalValidationError);
+
+    expect(DteSigner.verify).toHaveBeenCalledWith(validEnvioDteXml, 'F55T33');
+    expect(mockAuthUseCase.execute).not.toHaveBeenCalled();
+    expect(mockSiiGateway.sendDte).not.toHaveBeenCalled();
+  });
+
+  it('debe bloquear el envío si la firma del SetDTE no es válida', async () => {
+    vi.mocked(EnvioDteBuilder.verify).mockReturnValue(false);
+    const useCase = new SubmitEnvioDteUseCase(mockAuthUseCase, mockSiiGateway);
+    const invoice = getSignedInvoice('tenant-submit', 55);
+
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-submit',
+        invoices: [invoice],
+        envioDteXml: validEnvioDteXml,
+        rutSender: Rut.of('15123456-9')
+      })
+    ).rejects.toThrow(FiscalValidationError);
+
+    expect(mockAuthUseCase.execute).not.toHaveBeenCalled();
+    expect(mockSiiGateway.sendDte).not.toHaveBeenCalled();
+  });
+
+  it('debe rechazar discrepancias entre cantidad de DTE y facturas', async () => {
+    const useCase = new SubmitEnvioDteUseCase(mockAuthUseCase, mockSiiGateway);
+    const invoice = getSignedInvoice('tenant-submit', 55);
+
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-submit',
+        invoices: [invoice],
+        envioDteXml: '<EnvioDTE><SetDTE></SetDTE></EnvioDTE>',
+        rutSender: Rut.of('15123456-9')
+      })
+    ).rejects.toThrow(FiscalValidationError);
+
+    expect(mockAuthUseCase.execute).not.toHaveBeenCalled();
+    expect(mockSiiGateway.sendDte).not.toHaveBeenCalled();
   });
 
   it('debe rechazar facturas con tenantId incongruente', async () => {
@@ -113,7 +206,7 @@ describe('SubmitEnvioDteUseCase', () => {
       useCase.execute({
         tenantId: 'otro-tenant',
         invoices: [invoice],
-        envioDteXml: '<EnvioDTE></EnvioDTE>',
+        envioDteXml: validEnvioDteXml,
         rutSender: Rut.of('15123456-9')
       })
     ).rejects.toThrow(TenantMismatchError);
@@ -153,7 +246,7 @@ describe('SubmitEnvioDteUseCase', () => {
       useCase.execute({
         tenantId: 'tenant-submit',
         invoices: [draftInvoice],
-        envioDteXml: '<EnvioDTE></EnvioDTE>',
+        envioDteXml: validEnvioDteXml,
         rutSender: Rut.of('15123456-9')
       })
     ).rejects.toThrow(FiscalValidationError);
@@ -171,7 +264,7 @@ describe('SubmitEnvioDteUseCase', () => {
       useCase.execute({
         tenantId: 'tenant-submit',
         invoices: [invoice],
-        envioDteXml: '<EnvioDTE></EnvioDTE>',
+        envioDteXml: validEnvioDteXml,
         rutSender: Rut.of('15123456-9')
       })
     ).rejects.toThrow(SiiConnectionError);

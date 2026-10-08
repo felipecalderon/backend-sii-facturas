@@ -2,6 +2,10 @@ import { SignedXml } from 'xml-crypto';
 import { DigitalCertificate } from '../../domain/certificate/values/digital-certificate.vo.js';
 import { Rut } from '../../domain/shared/rut.vo.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
+import {
+  findNonLatin1CodePoint,
+  formatUnicodeCodePoint
+} from './xml-encoding.js';
 
 export interface EnvioDteOptions {
   rutEmisor: Rut;
@@ -53,9 +57,13 @@ export class EnvioDteBuilder {
     const tmstDate = options.tmstFirmaEnv ?? new Date();
     const tmstStr = EnvioDteBuilder.formatIsoTimestamp(tmstDate);
 
-    // 1. Limpiar declaraciones XML de los DTEs individuales
+    // 1. Limpiar declaraciones XML y dejar que el DTE herede el namespace del sobre.
+    // Se conserva xsi (contexto de C14N de la firma DTE) y el texto interno,
+    // porque C14N también los incluye en sus respectivas firmas.
     const cleanedDtes = signedDteXmls.map((xml) =>
-      xml.replace(/<\?xml[\s\S]*?\?>/i, '').trim()
+      EnvioDteBuilder.removeDteNamespaceDeclaration(
+        xml.replace(/<\?xml[\s\S]*?\?>/i, '').trim()
+      )
     );
 
     // 2. Construir árbol XML preliminar de EnvioDTE
@@ -78,7 +86,15 @@ export class EnvioDteBuilder {
       `</SetDTE>` +
       `</EnvioDTE>`;
 
-    // 3. Configurar firma digital XMLDSig sobre el nodo SetDTE
+    const nonLatin1CodePoint = findNonLatin1CodePoint(unsignedEnvioXml);
+    if (nonLatin1CodePoint !== undefined) {
+      throw new FiscalValidationError(
+        `El EnvioDTE contiene U+${formatUnicodeCodePoint(nonLatin1CodePoint)}, no representable en ISO-8859-1`
+      );
+    }
+
+    // 3. Firmar el SetDTE ya ensamblado: no aplicar pretty-print ni normalizar
+    // espacios después de este punto, porque son nodos de texto incluidos por C14N.
     const sig = new SignedXml();
     sig.idAttributes = ['ID', 'Id', 'id'];
     sig.privateKey = certificate.privateKeyPem;
@@ -138,6 +154,28 @@ export class EnvioDteBuilder {
     } catch {
       return false;
     }
+  }
+
+  private static removeDteNamespaceDeclaration(xml: string): string {
+    const rootTagMatch = xml.match(/^<DTE\b[^>]*>/);
+    if (!rootTagMatch) {
+      throw new FiscalValidationError(
+        'El XML firmado debe tener un nodo raíz DTE para integrarse en EnvioDTE'
+      );
+    }
+
+    const rootTag = rootTagMatch[0];
+    const rootTagWithoutNamespace = rootTag.replace(
+      /\s+xmlns=(["'])http:\/\/www\.sii\.cl\/SiiDte\1/,
+      ''
+    );
+    if (rootTagWithoutNamespace === rootTag) {
+      throw new FiscalValidationError(
+        'El nodo raíz DTE debe declarar el namespace oficial SII antes de integrarse en EnvioDTE'
+      );
+    }
+
+    return `${rootTagWithoutNamespace}${xml.slice(rootTag.length)}`;
   }
 
   private static formatIsoTimestamp(date: Date): string {

@@ -66,21 +66,28 @@ export class DteSigner {
     return `<?xml version="1.0" encoding="ISO-8859-1"?>\n${signedXmlContent}`;
   }
 
-  public static verify(signedDteXml: string): boolean {
+  public static verify(signedDteXml: string, referenceId?: string): boolean {
     try {
       const sig = new SignedXml({
         getCertFromKeyInfo: SignedXml.getCertFromKeyInfo
       });
       sig.idAttributes = ['ID', 'Id', 'id'];
 
-      const signatureMatch = signedDteXml.match(
-        /<Signature[\s\S]*?<\/Signature>/i
-      );
+      const signatures =
+        signedDteXml.match(/<Signature\b[\s\S]*?<\/Signature>/gi) ?? [];
+      const signatureMatch = referenceId
+        ? signatures.find((signature) => {
+            const referenceMatch = signature.match(
+              /<Reference\b[^>]*\bURI\s*=\s*(["'])#([^"']+)\1/i
+            );
+            return referenceMatch?.[2] === referenceId;
+          })
+        : signatures[0];
       if (!signatureMatch) {
         return false;
       }
 
-      sig.loadSignature(signatureMatch[0]);
+      sig.loadSignature(signatureMatch);
       return sig.checkSignature(signedDteXml);
     } catch {
       return false;

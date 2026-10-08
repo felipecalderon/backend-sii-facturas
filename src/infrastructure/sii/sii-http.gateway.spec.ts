@@ -101,19 +101,50 @@ describe('SiiHttpGateway', () => {
         );
       });
 
+    const envioDteXml =
+      '<?xml version="1.0" encoding="ISO-8859-1"?><EnvioDTE>Purén</EnvioDTE>';
     const gateway = new SiiHttpGateway();
     const result = await gateway.sendDte({
       env: 'CERTIFICATION',
       token: 'SESSION_TOKEN_123',
       rutSender: Rut.of('15123456-9'),
       rutCompany: Rut.of('76123456-0'),
-      envioDteXml: '<EnvioDTE><SetDTE></SetDTE></EnvioDTE>'
+      envioDteXml
     });
 
     expect(result.trackId).toBe('8877665544');
     expect(result.status).toBe('0');
     expect((capturedHeaders as any).Cookie).toBe('TOKEN=SESSION_TOKEN_123');
+    expect((capturedHeaders as any)['User-Agent']).toBe(
+      'Mozilla/4.0 (compatible; PROG 1.0; Windows NT 5.0; YComp 5.0.2.4)'
+    );
+    expect((capturedHeaders as any)['Content-Type']).toBeUndefined();
     expect(capturedBody).toBeInstanceOf(FormData);
+
+    const uploadedFile = (capturedBody as FormData).get('archivo') as Blob;
+    expect(uploadedFile).toBeInstanceOf(Blob);
+    const uploadedXml = Buffer.from(await uploadedFile.arrayBuffer()).toString(
+      'latin1'
+    );
+    expect(uploadedXml).toBe(envioDteXml);
+  });
+
+  it('debe rechazar caracteres no representables en ISO-8859-1 antes del fetch', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+
+    const gateway = new SiiHttpGateway();
+    await expect(
+      gateway.sendDte({
+        env: 'CERTIFICATION',
+        token: 'SESSION_TOKEN_123',
+        rutSender: Rut.of('15123456-9'),
+        rutCompany: Rut.of('76123456-0'),
+        envioDteXml: '<EnvioDTE>😀</EnvioDTE>'
+      })
+    ).rejects.toThrow(SiiSubmissionError);
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('debe lanzar SiiSubmissionError si el SII responde con STATUS diferente de 0', async () => {

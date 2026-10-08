@@ -12,6 +12,10 @@ import {
   SiiConnectionError,
   SiiSubmissionError
 } from '../../domain/sii/errors/sii-domain.error.js';
+import {
+  findNonLatin1CodePoint,
+  formatUnicodeCodePoint
+} from '../xml/xml-encoding.js';
 
 export interface SiiHttpGatewayOptions {
   timeoutMs?: number;
@@ -102,7 +106,16 @@ export class SiiHttpGateway implements SiiGateway {
     formData.append('rutCompany', String(params.rutCompany.body));
     formData.append('dvCompany', String(params.rutCompany.dv));
 
-    // El SII exige el archivo codificado en ISO-8859-1 (latin1)
+    // Buffer.from(..., 'latin1') truncaría silenciosamente caracteres > U+00FF.
+    // Fallar antes de convertir para no enviar bytes distintos al XML firmado.
+    const nonLatin1CodePoint = findNonLatin1CodePoint(params.envioDteXml);
+    if (nonLatin1CodePoint !== undefined) {
+      throw new SiiSubmissionError(
+        `El XML del EnvioDTE contiene U+${formatUnicodeCodePoint(nonLatin1CodePoint)}, no representable en ISO-8859-1`
+      );
+    }
+
+    // El SII exige el archivo codificado en ISO-8859-1 (latin1).
     const xmlBuffer = Buffer.from(params.envioDteXml, 'latin1');
     const blob = new Blob([xmlBuffer], { type: 'text/xml' });
     formData.append('archivo', blob, 'envio.xml');

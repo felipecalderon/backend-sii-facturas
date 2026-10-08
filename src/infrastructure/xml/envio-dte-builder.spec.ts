@@ -26,7 +26,7 @@ describe('EnvioDteBuilder', () => {
 
   const getSignedDte = (
     folio = 101
-  ): { signedDteXml: string; cert: DigitalCertificate } => {
+  ): { signedDteXml: string; cert: DigitalCertificate; docId: string } => {
     const inv = Invoice.createDraft({
       tenantId: 'tenant-envio',
       fechaEmision: new Date('2026-09-03'),
@@ -89,24 +89,38 @@ describe('EnvioDteBuilder', () => {
     const signedDteXml = DteSigner.sign(dteXml, cert, docId);
     inv.sign(signedDteXml);
 
-    return { signedDteXml, cert };
+    return { signedDteXml, cert, docId };
   };
 
   it('debe construir el sobre EnvioDTE con Carátula, SetDTE y firma XMLDSig válida', () => {
-    const { signedDteXml, cert } = getSignedDte(101);
+    const { signedDteXml, cert, docId } = getSignedDte(101);
+    const signedDteWithWhitespace = signedDteXml.replace(
+      '</DTE>',
+      '\n  </DTE>'
+    );
 
-    const envioXml = EnvioDteBuilder.buildAndSign([signedDteXml], cert, {
-      rutEmisor: Rut.of('76123456-0'),
-      rutEnvia: Rut.of('15123456-9'),
-      rutReceptor: Rut.of('60803000-K'),
-      fchResol: '2026-09-01',
-      nroResol: 80
-    });
+    const envioXml = EnvioDteBuilder.buildAndSign(
+      [signedDteWithWhitespace],
+      cert,
+      {
+        rutEmisor: Rut.of('76123456-0'),
+        rutEnvia: Rut.of('15123456-9'),
+        rutReceptor: Rut.of('60803000-K'),
+        fchResol: '2026-09-01',
+        nroResol: 80
+      }
+    );
 
     expect(envioXml).toBeDefined();
     expect(envioXml).toContain('<?xml version="1.0" encoding="ISO-8859-1"?>');
     expect(envioXml).toContain('<EnvioDTE');
     expect(envioXml).toContain('<SetDTE ID="SetDoc">');
+    expect(envioXml).toMatch(/<DTE\b[^>]*\bversion="1.0"/);
+    expect(envioXml).toMatch(
+      /<DTE\b[^>]*\bxmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance"/
+    );
+    expect(envioXml).not.toMatch(/<DTE\b[^>]*\bxmlns=/);
+    expect(envioXml).toContain('\n  </DTE>');
     expect(envioXml).toContain('<Caratula version="1.0">');
     expect(envioXml).toContain('<RutEmisor>76123456-0</RutEmisor>');
     expect(envioXml).toContain('<RutEnvia>15123456-9</RutEnvia>');
@@ -122,6 +136,7 @@ describe('EnvioDteBuilder', () => {
     // Verificar firma criptográfica de EnvioDTE sobre el SetDTE (#SetDoc)
     const isValid = EnvioDteBuilder.verify(envioXml);
     expect(isValid).toBe(true);
+    expect(DteSigner.verify(envioXml, docId)).toBe(true);
 
     // Alterar el contenido dentro de SetDTE debe invalidar la firma del sobre
     const tamperedXml = envioXml.replace(
@@ -129,6 +144,25 @@ describe('EnvioDteBuilder', () => {
       'Consultoría Modificada'
     );
     expect(EnvioDteBuilder.verify(tamperedXml)).toBe(false);
+  });
+
+  it('debe verificar cada firma DTE anidada en un sobre con varios documentos', () => {
+    const first = getSignedDte(201);
+    const second = getSignedDte(202);
+    const envioXml = EnvioDteBuilder.buildAndSign(
+      [first.signedDteXml, second.signedDteXml],
+      first.cert,
+      {
+        rutEmisor: Rut.of('76123456-0'),
+        rutEnvia: Rut.of('15123456-9'),
+        fchResol: '2026-09-01',
+        nroResol: 80
+      }
+    );
+
+    expect(DteSigner.verify(envioXml, first.docId)).toBe(true);
+    expect(DteSigner.verify(envioXml, second.docId)).toBe(true);
+    expect(EnvioDteBuilder.verify(envioXml)).toBe(true);
   });
 
   it('debe generar un sobre que valida contra el esquema EnvioDTE_v10.xsd', async () => {

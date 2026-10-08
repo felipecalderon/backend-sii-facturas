@@ -144,9 +144,7 @@ AQAB
 </RSAKeyValue>
 </KeyValue>
 <X509Data>
-<X509Certificate>MIIEgjCCA+ugAwIBAgIEAQAApzANBgkqhkiG9w0BAQUFADCBtTELMAkGA1UEBhMC
-Q0wxHTAbBgNVBAgUFFJlZ2lvbiBNZXRyb3BvbGl0YW5hMREwDwYDVQQHFAhTYW50
-...</X509Certificate>
+<X509Certificate>VGVzdCBDZXJ0aWZpY2F0ZQ==</X509Certificate>
 </X509Data>
 </KeyInfo>
 </Signature></DTE>
@@ -177,9 +175,7 @@ AQAB
 </RSAKeyValue>
 </KeyValue>
 <X509Data>
-<X509Certificate>MIIEgjCCA+ugAwIBAgIEAQAApzANBgkqhkiG9w0BAQUFADCBtTELMAkGA1UEBhMC
-Q0wxHTAbBgNVBAgUFFJlZ2lvbiBNZXRyb3BvbGl0YW5hMREwDwYDVQQHFAhTYW50
-aWFnbzEUMBIGA1UECh...</X509Certificate>
+<X509Certificate>VGVzdCBDZXJ0aWZpY2F0ZQ==</X509Certificate>
 </X509Data>
 </KeyInfo>
 </Signature></EnvioDTE>

@@ -1,6 +1,10 @@
 import { create, fragment } from 'xmlbuilder2';
 import { Invoice } from '../../domain/dte/entities/invoice.entity.js';
 import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
+import {
+  findNonLatin1CodePoint,
+  formatUnicodeCodePoint
+} from './xml-encoding.js';
 
 export interface RenderDteOptions {
   tmstFirma?: Date;
@@ -25,12 +29,12 @@ export class DteXmlRenderer {
     const tmstFirmaStr = DteXmlRenderer.formatIsoTimestamp(tmstDate);
     const fchEmisStr = DteXmlRenderer.formatDate(invoice.fechaEmision);
 
-    // 1. Inicializar documento con declaración ISO-8859-1 y nodo raíz DTE con namespace oficial
-    const root = create({ version: '1.0', encoding: 'ISO-8859-1' }).ele(
-      'http://www.sii.cl/SiiDte',
-      'DTE',
-      { version: '1.0' }
-    );
+    // 1. Inicializar documento con declaración ISO-8859-1 y nodo raíz DTE.
+    // Declarar xsi también aquí conserva el contexto C14N de la firma al anidar
+    // el DTE bajo un EnvioDTE, que declara xsi en su propia raíz.
+    const root = create({ version: '1.0', encoding: 'ISO-8859-1' })
+      .ele('http://www.sii.cl/SiiDte', 'DTE', { version: '1.0' })
+      .att('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
 
     // 2. Nodo Documento con atributo ID obligatorio
     const docEle = root.ele('Documento', { ID: docId });
@@ -180,7 +184,15 @@ export class DteXmlRenderer {
         );
     }
 
-    return root.end({ prettyPrint: true });
+    const xml = root.end({ prettyPrint: true });
+    const nonLatin1CodePoint = findNonLatin1CodePoint(xml);
+    if (nonLatin1CodePoint !== undefined) {
+      throw new FiscalValidationError(
+        `El XML DTE contiene U+${formatUnicodeCodePoint(nonLatin1CodePoint)}, no representable en ISO-8859-1`
+      );
+    }
+
+    return xml;
   }
 
   private static formatDate(date: Date): string {

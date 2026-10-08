@@ -48,7 +48,7 @@ describe('DtePdfRenderer', () => {
         nroResol: 80
       }),
       receptor: Receiver.create({
-        rut: Rut.of('77888999-1'),
+        rut: Rut.of('77888999-4'),
         razonSocial: 'Comercializadora del Sur S.A.',
         giro: 'Venta al por mayor',
         direccion: 'Av. Las Condes 5678',
@@ -101,7 +101,7 @@ describe('DtePdfRenderer', () => {
         comuna: 'Santiago'
       }),
       receptor: Receiver.create({
-        rut: Rut.of('77888999-1'),
+        rut: Rut.of('77888999-4'),
         razonSocial: 'Receptor SpA',
         giro: 'Comercio',
         direccion: 'Calle 2',
@@ -135,7 +135,7 @@ describe('DtePdfRenderer', () => {
         comuna: 'Santiago'
       }),
       receptor: Receiver.create({
-        rut: Rut.of('77888999-1'),
+        rut: Rut.of('77888999-4'),
         razonSocial: 'Receptor SpA',
         giro: 'Comercio',
         direccion: 'Calle 2',

@@ -29,10 +29,33 @@ export class XsdValidator {
   ): Promise<XsdValidationResult> {
     XsdValidator.loadSchemas();
 
-    return XsdValidator.validateAgainst(xmlContent, {
+    const result = await XsdValidator.validateAgainst(xmlContent, {
       fileName: 'EnvioDTE_v10.xsd',
       contents: XsdValidator.envioDteXsdContent!
     });
+    if (
+      !result.isValid ||
+      XsdValidator.getRootElementName(xmlContent) === 'EnvioDTE'
+    ) {
+      return result;
+    }
+
+    return {
+      isValid: false,
+      errors: ['El elemento raíz debe ser <EnvioDTE>.']
+    };
+  }
+
+  private static getRootElementName(xmlContent: string): string | undefined {
+    const xmlWithoutProlog = xmlContent.replace(
+      /^\uFEFF?\s*(?:(?:<\?[\s\S]*?\?>|<!--[\s\S]*?-->)\s*)*/,
+      ''
+    );
+    const rootMatch = xmlWithoutProlog.match(
+      /^<(?:[^:\s/>]+:)?([^:\s/>]+)(?=[\s/>])/
+    );
+
+    return rootMatch?.[1];
   }
 
   private static async validateAgainst(

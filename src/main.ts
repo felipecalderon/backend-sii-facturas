@@ -22,7 +22,6 @@ async function bootstrap() {
         'Todas las operaciones son multitenant: cada request debe incluir el header `x-tenant-id`.'
     )
     .setVersion('2.0')
-    .addServer('http://localhost:3001', 'Desarrollo local')
     .addTag(
       'certificates',
       'Gestión de certificados digitales (.p12) por tenant'
