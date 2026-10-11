@@ -23,6 +23,7 @@ export class DteSigner {
     const cleanXml = dteXml
       .replace(/<Signature[\s\S]*?<\/Signature>/gi, '')
       .replace(/<\?xml[\s\S]*?\?>/i, '')
+      .replace(/<\/Documento>\s*<\/DTE>/, '</Documento>\n</DTE>')
       .trim();
 
     // 2. Configurar SignedXml para DTE según normativa SII
@@ -44,11 +45,13 @@ export class DteSigner {
     const { modulus, exponent } = certificate.getModulusAndExponent();
     const cleanCert = certificate.getCleanCertificate();
 
-    // Construir KeyInfo con KeyValue (RSA) y X509Data obligatorio según esquema SII
+    // Construir KeyInfo con KeyValue (RSA) y X509Data con saltos de línea para evitar CHR-00002
     sig.getKeyInfoContent = () => {
       return (
-        `<KeyValue><RSAKeyValue><Modulus>${modulus}</Modulus><Exponent>${exponent}</Exponent></RSAKeyValue></KeyValue>` +
-        `<X509Data><X509Certificate>${cleanCert}</X509Certificate></X509Data>`
+        '\n<KeyValue>\n' +
+        `<RSAKeyValue>\n<Modulus>${modulus}</Modulus>\n<Exponent>${exponent}</Exponent>\n</RSAKeyValue>\n` +
+        '</KeyValue>\n' +
+        `<X509Data>\n<X509Certificate>${cleanCert}</X509Certificate>\n</X509Data>`
       );
     };
 
@@ -60,7 +63,14 @@ export class DteSigner {
       }
     });
 
-    const signedXmlContent = sig.getSignedXml();
+    let signedXmlContent = sig.getSignedXml();
+    // Asegurar saltos de línea para que ninguna línea exceda el buffer del SII (CHR-00002: Line too long)
+    signedXmlContent = signedXmlContent
+      .replace(/<\/Documento><Signature\b/, '</Documento>\n<Signature')
+      .replace(/<\/SignedInfo><SignatureValue>/, '</SignedInfo>\n<SignatureValue>')
+      .replace(/<\/SignatureValue><KeyInfo>/, '</SignatureValue>\n<KeyInfo>')
+      .replace(/<\/KeyInfo><\/Signature>/, '</KeyInfo>\n</Signature>')
+      .replace(/<\/Signature><\/DTE>/, '</Signature>\n</DTE>');
 
     // 4. Restaurar declaración ISO-8859-1 requerida por el SII
     return `<?xml version="1.0" encoding="ISO-8859-1"?>\n${signedXmlContent}`;

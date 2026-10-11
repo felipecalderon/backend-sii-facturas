@@ -44,7 +44,7 @@ export class Pkcs12Parser {
 
     const privateKeyPem = forge.pki.privateKeyToPem(keyBags[0].key);
 
-    // 2. Extraer certificado X.509
+    // 2. Extraer certificado X.509 correspondiente a la clave privada
     const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[
       forge.pki.oids.certBag
     ];
@@ -55,7 +55,35 @@ export class Pkcs12Parser {
       );
     }
 
-    const certificatePem = forge.pki.certificateToPem(certBags[0].cert);
+    let matchingCert: forge.pki.Certificate | undefined;
+    try {
+      const privKeyPubKeyDer = crypto
+        .createPublicKey(privateKeyPem)
+        .export({ type: 'spki', format: 'der' });
+
+      for (const bag of certBags) {
+        if (bag.cert) {
+          try {
+            const pem = forge.pki.certificateToPem(bag.cert);
+            const certPubKeyDer = crypto
+              .createPublicKey(pem)
+              .export({ type: 'spki', format: 'der' });
+            if (privKeyPubKeyDer.equals(certPubKeyDer)) {
+              matchingCert = bag.cert;
+              break;
+            }
+          } catch {
+            // Continuar buscando en otros bags
+          }
+        }
+      }
+    } catch {
+      // Si falla la extracción de clave pública, continuar con fallback
+    }
+
+    const certificatePem = forge.pki.certificateToPem(
+      matchingCert ?? certBags[0].cert
+    );
 
     // 3. Inspeccionar vigencia y sujeto con X509Certificate nativo de Node.js
     const x509 = new crypto.X509Certificate(certificatePem);

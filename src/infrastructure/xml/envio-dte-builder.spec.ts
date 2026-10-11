@@ -115,11 +115,8 @@ describe('EnvioDteBuilder', () => {
     expect(envioXml).toContain('<?xml version="1.0" encoding="ISO-8859-1"?>');
     expect(envioXml).toContain('<EnvioDTE');
     expect(envioXml).toContain('<SetDTE ID="SetDoc">');
-    expect(envioXml).toMatch(/<DTE\b[^>]*\bversion="1.0"/);
-    expect(envioXml).toMatch(
-      /<DTE\b[^>]*\bxmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance"/
-    );
-    expect(envioXml).not.toMatch(/<DTE\b[^>]*\bxmlns=/);
+    expect(envioXml).toContain('<DTE version="1.0">');
+    expect(envioXml).not.toMatch(/<DTE\b[^>]*\bxmlns/);
     expect(envioXml).toContain('\n  </DTE>');
     expect(envioXml).toContain('<Caratula version="1.0">');
     expect(envioXml).toContain('<RutEmisor>76123456-0</RutEmisor>');
@@ -130,8 +127,8 @@ describe('EnvioDteBuilder', () => {
     expect(envioXml).toContain('<TpoDTE>33</TpoDTE>');
     expect(envioXml).toContain('<NroDTE>1</NroDTE>');
     expect(envioXml).toContain('<Reference URI="#SetDoc">');
-    expect(envioXml).toContain('<KeyValue><RSAKeyValue>');
-    expect(envioXml).toContain('<X509Data><X509Certificate>');
+    expect(envioXml).toMatch(/<KeyValue>\s*<RSAKeyValue>/);
+    expect(envioXml).toMatch(/<X509Data>\s*<X509Certificate>/);
 
     // Verificar firma criptográfica de EnvioDTE sobre el SetDTE (#SetDoc)
     const isValid = EnvioDteBuilder.verify(envioXml);

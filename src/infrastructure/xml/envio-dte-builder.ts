@@ -66,24 +66,24 @@ export class EnvioDteBuilder {
       )
     );
 
-    // 2. Construir árbol XML preliminar de EnvioDTE
+    // 2. Construir árbol XML preliminar de EnvioDTE respetando saltos e indentación del estándar SII
     const unsignedEnvioXml =
-      `<EnvioDTE xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sii.cl/SiiDte EnvioDTE_v10.xsd" version="1.0">` +
-      `<SetDTE ID="SetDoc">` +
-      `<Caratula version="1.0">` +
-      `<RutEmisor>${rutEmisorStr}</RutEmisor>` +
-      `<RutEnvia>${rutEnviaStr}</RutEnvia>` +
-      `<RutReceptor>${rutReceptorStr}</RutReceptor>` +
-      `<FchResol>${fchResol}</FchResol>` +
-      `<NroResol>${nroResol}</NroResol>` +
-      `<TmstFirmaEnv>${tmstStr}</TmstFirmaEnv>` +
-      `<SubTotDTE>` +
-      `<TpoDTE>${tipoDte}</TpoDTE>` +
-      `<NroDTE>${nroDte}</NroDTE>` +
-      `</SubTotDTE>` +
-      `</Caratula>` +
+      `<EnvioDTE xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sii.cl/SiiDte EnvioDTE_v10.xsd" version="1.0">\n` +
+      `<SetDTE ID="SetDoc">\n` +
+      ` <Caratula version="1.0">\n` +
+      `  <RutEmisor>${rutEmisorStr}</RutEmisor>\n` +
+      `  <RutEnvia>${rutEnviaStr}</RutEnvia>\n` +
+      `  <RutReceptor>${rutReceptorStr}</RutReceptor>\n` +
+      `  <FchResol>${fchResol}</FchResol>\n` +
+      `  <NroResol>${nroResol}</NroResol>\n` +
+      `  <TmstFirmaEnv>${tmstStr}</TmstFirmaEnv>\n` +
+      `  <SubTotDTE>\n` +
+      `   <TpoDTE>${tipoDte}</TpoDTE>\n` +
+      `   <NroDTE>${nroDte}</NroDTE>\n` +
+      `  </SubTotDTE>\n` +
+      ` </Caratula>\n` +
       cleanedDtes.join('\n') +
-      `</SetDTE>` +
+      `\n</SetDTE>\n` +
       `</EnvioDTE>`;
 
     const nonLatin1CodePoint = findNonLatin1CodePoint(unsignedEnvioXml);
@@ -112,10 +112,13 @@ export class EnvioDteBuilder {
     const { modulus, exponent } = certificate.getModulusAndExponent();
     const cleanCert = certificate.getCleanCertificate();
 
+    // Construir KeyInfo con KeyValue (RSA) y X509Data con saltos de línea para evitar CHR-00002
     sig.getKeyInfoContent = () => {
       return (
-        `<KeyValue><RSAKeyValue><Modulus>${modulus}</Modulus><Exponent>${exponent}</Exponent></RSAKeyValue></KeyValue>` +
-        `<X509Data><X509Certificate>${cleanCert}</X509Certificate></X509Data>`
+        '\n<KeyValue>\n' +
+        `<RSAKeyValue>\n<Modulus>${modulus}</Modulus>\n<Exponent>${exponent}</Exponent>\n</RSAKeyValue>\n` +
+        '</KeyValue>\n' +
+        `<X509Data>\n<X509Certificate>${cleanCert}</X509Certificate>\n</X509Data>`
       );
     };
 
@@ -126,7 +129,14 @@ export class EnvioDteBuilder {
       }
     });
 
-    const signedXml = sig.getSignedXml();
+    let signedXml = sig.getSignedXml();
+    // Asegurar saltos de línea para que ninguna línea exceda el buffer del SII (CHR-00002: Line too long)
+    signedXml = signedXml
+      .replace(/<\/SetDTE><Signature\b/, '</SetDTE>\n<Signature')
+      .replace(/<\/SignedInfo><SignatureValue>/, '</SignedInfo>\n<SignatureValue>')
+      .replace(/<\/SignatureValue><KeyInfo>/, '</SignatureValue>\n<KeyInfo>')
+      .replace(/<\/KeyInfo><\/Signature>/, '</KeyInfo>\n</Signature>')
+      .replace(/<\/Signature><\/EnvioDTE>/, '</Signature>\n</EnvioDTE>');
 
     return `<?xml version="1.0" encoding="ISO-8859-1"?>\n${signedXml}`;
   }
@@ -165,17 +175,18 @@ export class EnvioDteBuilder {
     }
 
     const rootTag = rootTagMatch[0];
-    const rootTagWithoutNamespace = rootTag.replace(
-      /\s+xmlns=(["'])http:\/\/www\.sii\.cl\/SiiDte\1/,
-      ''
-    );
-    if (rootTagWithoutNamespace === rootTag) {
+    const hasSiiNamespace =
+      rootTag.includes('xmlns="http://www.sii.cl/SiiDte"') ||
+      rootTag.includes("xmlns='http://www.sii.cl/SiiDte'");
+    if (!hasSiiNamespace) {
       throw new FiscalValidationError(
         'El nodo raíz DTE debe declarar el namespace oficial SII antes de integrarse en EnvioDTE'
       );
     }
 
-    return `${rootTagWithoutNamespace}${xml.slice(rootTag.length)}`;
+    // El sobre EnvioDTE ya declara xmlns="http://www.sii.cl/SiiDte" y xmlns:xsi.
+    // En el formato oficial del SII (DTE33-ejemplo.xml), el nodo anidado es exactamente <DTE version="1.0">.
+    return `<DTE version="1.0">${xml.slice(rootTag.length)}`;
   }
 
   private static formatIsoTimestamp(date: Date): string {

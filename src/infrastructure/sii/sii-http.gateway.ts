@@ -184,8 +184,12 @@ export class SiiHttpGateway implements SiiGateway {
     const responseText = await this.postSoap(url, soapEnvelope, 'getEstUp');
 
     const estadoMatch =
-      responseText.match(/<ESTADO>([A-Za-z0-9_-]+)<\/ESTADO>/i) ||
-      responseText.match(/&lt;ESTADO&gt;([A-Za-z0-9_-]+)&lt;\/ESTADO&gt;/i);
+      responseText.match(
+        /<ESTADO(?:_ENVIO)?>([A-Za-z0-9_-]+)<\/ESTADO(?:_ENVIO)?>/i
+      ) ||
+      responseText.match(
+        /&lt;ESTADO(?:_ENVIO)?&gt;([A-Za-z0-9_-]+)&lt;\/ESTADO(?:_ENVIO)?&gt;/i
+      );
 
     const glosaMatch =
       responseText.match(/<GLOSA>([\s\S]*?)<\/GLOSA>/i) ||
@@ -199,7 +203,13 @@ export class SiiHttpGateway implements SiiGateway {
       status = 'EPR';
     } else if (rawEstado === 'REC') {
       status = 'REC';
-    } else if (rawEstado === 'RECH' || rawEstado === 'RCH') {
+    } else if (
+      rawEstado === 'RECH' ||
+      rawEstado === 'RCH' ||
+      rawEstado === 'RFR' ||
+      rawEstado.startsWith('R') ||
+      (glosa && /rechaz/i.test(glosa))
+    ) {
       status = 'RECH';
     } else {
       status = 'UNKNOWN';

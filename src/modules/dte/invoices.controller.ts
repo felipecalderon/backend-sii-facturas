@@ -10,7 +10,8 @@ import {
   HttpException,
   NotFoundException,
   ParseIntPipe,
-  Res
+  Res,
+  Logger
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -50,6 +51,8 @@ import { PaginatedInvoicesResponseDto } from './dto/paginated-invoices-response.
 @ApiTags('invoices')
 @Controller('invoices')
 export class InvoicesController {
+  private readonly logger = new Logger(InvoicesController.name);
+
   constructor(
     private readonly issueInvoiceUseCase: IssueInvoiceUseCase,
     private readonly queryEnvioStatusUseCase: QueryEnvioStatusUseCase,
@@ -310,8 +313,11 @@ export class InvoicesController {
 
         siiStatus = queryResult.status;
         glosa = queryResult.glosa;
-      } catch {
-        // En caso de falla transitoria con el SII, mantenemos el estado local previamente guardado
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Error al sincronizar estado SII para folio ${folio}: ${errorMsg}`
+        );
       }
     }
 

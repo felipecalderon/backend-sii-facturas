@@ -100,8 +100,8 @@ describe('DteSigner', () => {
       '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">'
     );
     expect(signedXml).toContain(`<Reference URI="#${docId}">`);
-    expect(signedXml).toContain('<KeyValue><RSAKeyValue><Modulus>');
-    expect(signedXml).toContain('<X509Data><X509Certificate>');
+    expect(signedXml).toMatch(/<KeyValue>\s*<RSAKeyValue>\s*<Modulus>/);
+    expect(signedXml).toMatch(/<X509Data>\s*<X509Certificate>/);
 
     const isValidSig = DteSigner.verify(signedXml);
     expect(isValidSig).toBe(true);

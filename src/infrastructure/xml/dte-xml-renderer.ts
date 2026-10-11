@@ -25,7 +25,12 @@ export class DteXmlRenderer {
     }
 
     const docId = `F${invoice.folio}T${invoice.tipoDte.code}`;
-    const tmstDate = options?.tmstFirma ?? invoice.fechaEmision;
+    const tmstDate =
+      options?.tmstFirma ??
+      (invoice.fechaEmision.getHours() === 0 &&
+      invoice.fechaEmision.getMinutes() === 0
+        ? new Date()
+        : invoice.fechaEmision);
     const tmstFirmaStr = DteXmlRenderer.formatIsoTimestamp(tmstDate);
     const fchEmisStr = DteXmlRenderer.formatDate(invoice.fechaEmision);
 
@@ -73,7 +78,7 @@ export class DteXmlRenderer {
       emisorEle.ele('CiudadOrigen').txt(invoice.emisor.ciudad);
     }
 
-    // 3.3 Receptor
+    // 3.3 Receptor (respetando secuencia estricta de DTE_v10.xsd)
     const recepEle = encabezado.ele('Receptor');
     recepEle.ele('RUTRecep').txt(invoice.receptor.rut.toCanonical());
     recepEle.ele('RznSocRecep').txt(invoice.receptor.razonSocial);
