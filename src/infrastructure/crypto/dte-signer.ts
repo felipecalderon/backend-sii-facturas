@@ -67,7 +67,10 @@ export class DteSigner {
     // Asegurar saltos de línea para que ninguna línea exceda el buffer del SII (CHR-00002: Line too long)
     signedXmlContent = signedXmlContent
       .replace(/<\/Documento><Signature\b/, '</Documento>\n<Signature')
-      .replace(/<\/SignedInfo><SignatureValue>/, '</SignedInfo>\n<SignatureValue>')
+      .replace(
+        /<\/SignedInfo><SignatureValue>/,
+        '</SignedInfo>\n<SignatureValue>'
+      )
       .replace(/<\/SignatureValue><KeyInfo>/, '</SignatureValue>\n<KeyInfo>')
       .replace(/<\/KeyInfo><\/Signature>/, '</KeyInfo>\n</Signature>')
       .replace(/<\/Signature><\/DTE>/, '</Signature>\n</DTE>');

@@ -34,12 +34,12 @@ export class DteXmlRenderer {
     const tmstFirmaStr = DteXmlRenderer.formatIsoTimestamp(tmstDate);
     const fchEmisStr = DteXmlRenderer.formatDate(invoice.fechaEmision);
 
-    // 1. Inicializar documento con declaración ISO-8859-1 y nodo raíz DTE.
-    // Declarar xsi también aquí conserva el contexto C14N de la firma al anidar
-    // el DTE bajo un EnvioDTE, que declara xsi en su propia raíz.
-    const root = create({ version: '1.0', encoding: 'ISO-8859-1' })
-      .ele('http://www.sii.cl/SiiDte', 'DTE', { version: '1.0' })
-      .att('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+    // 1. Inicializar documento con declaración ISO-8859-1 y nodo raíz DTE según estándar oficial SII
+    const root = create({ version: '1.0', encoding: 'ISO-8859-1' }).ele(
+      'http://www.sii.cl/SiiDte',
+      'DTE',
+      { version: '1.0' }
+    );
 
     // 2. Nodo Documento con atributo ID obligatorio
     const docEle = root.ele('Documento', { ID: docId });

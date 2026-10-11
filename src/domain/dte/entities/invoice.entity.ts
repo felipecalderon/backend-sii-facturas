@@ -252,6 +252,9 @@ export class Invoice {
   }
 
   public markAccepted(): void {
+    if (this._estado === InvoiceStatus.ACCEPTED) {
+      return;
+    }
     if (
       this._estado !== InvoiceStatus.SUBMITTED &&
       this._estado !== InvoiceStatus.UNKNOWN
@@ -264,6 +267,10 @@ export class Invoice {
   }
 
   public markRejected(motivo: string): void {
+    if (this._estado === InvoiceStatus.REJECTED) {
+      this._glosaRechazo = motivo;
+      return;
+    }
     if (
       this._estado !== InvoiceStatus.SUBMITTED &&
       this._estado !== InvoiceStatus.UNKNOWN
@@ -277,6 +284,10 @@ export class Invoice {
   }
 
   public markObserved(observaciones: string[]): void {
+    if (this._estado === InvoiceStatus.OBSERVED) {
+      this._observaciones = Object.freeze([...observaciones]) as string[];
+      return;
+    }
     if (
       this._estado !== InvoiceStatus.SUBMITTED &&
       this._estado !== InvoiceStatus.UNKNOWN

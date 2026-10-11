@@ -133,7 +133,10 @@ export class EnvioDteBuilder {
     // Asegurar saltos de línea para que ninguna línea exceda el buffer del SII (CHR-00002: Line too long)
     signedXml = signedXml
       .replace(/<\/SetDTE><Signature\b/, '</SetDTE>\n<Signature')
-      .replace(/<\/SignedInfo><SignatureValue>/, '</SignedInfo>\n<SignatureValue>')
+      .replace(
+        /<\/SignedInfo><SignatureValue>/,
+        '</SignedInfo>\n<SignatureValue>'
+      )
       .replace(/<\/SignatureValue><KeyInfo>/, '</SignatureValue>\n<KeyInfo>')
       .replace(/<\/KeyInfo><\/Signature>/, '</KeyInfo>\n</Signature>')
       .replace(/<\/Signature><\/EnvioDTE>/, '</Signature>\n</EnvioDTE>');

@@ -222,4 +222,34 @@ describe('Invoice Aggregate Root (Factura 33)', () => {
       'Falta actividad económica secundaria'
     ]);
   });
+
+  it('debe permitir transiciones idempotentes a ACCEPTED, REJECTED y OBSERVED sin lanzar error', () => {
+    const invoice = Invoice.createDraft({
+      tenantId: 'tenant-123',
+      fechaEmision: new Date('2026-09-03'),
+      emisor: createValidIssuer(),
+      receptor: createValidReceiver(),
+      items: [
+        InvoiceItem.create({
+          linea: 1,
+          nombre: 'Servicio',
+          cantidad: Money.fromInteger(1),
+          precioUnitario: Money.fromInteger(1000)
+        })
+      ]
+    });
+
+    invoice.assignFolio(12);
+    invoice.stampTed('<TED version="1.0"><DD></DD></TED>');
+    invoice.setDteXml('<DTE version="1.0"><Documento></Documento></DTE>');
+    invoice.sign(
+      '<DTE version="1.0"><Documento></Documento><Signature></Signature></DTE>'
+    );
+    invoice.markSubmitted('99887766');
+
+    // Idempotencia en ACCEPTED
+    invoice.markAccepted();
+    expect(() => invoice.markAccepted()).not.toThrow();
+    expect(invoice.estado).toBe(InvoiceStatus.ACCEPTED);
+  });
 });

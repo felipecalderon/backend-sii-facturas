@@ -199,18 +199,22 @@ export class SiiHttpGateway implements SiiGateway {
     const glosa = glosaMatch ? glosaMatch[1].trim() : undefined;
 
     let status: SiiSendStatusEnum;
-    if (rawEstado === 'EPR') {
+    const hasRejection =
+      (glosa && /rechaz/i.test(glosa)) ||
+      /RFR|RECH|RCH/i.test(rawEstado) ||
+      /<NUM_DOC_RECHAZADOS>[1-9]\d*<\/NUM_DOC_RECHAZADOS>/i.test(
+        responseText
+      ) ||
+      /&lt;NUM_DOC_RECHAZADOS&gt;[1-9]\d*&lt;\/NUM_DOC_RECHAZADOS&gt;/i.test(
+        responseText
+      );
+
+    if (hasRejection) {
+      status = 'RECH';
+    } else if (rawEstado === 'EPR') {
       status = 'EPR';
     } else if (rawEstado === 'REC') {
       status = 'REC';
-    } else if (
-      rawEstado === 'RECH' ||
-      rawEstado === 'RCH' ||
-      rawEstado === 'RFR' ||
-      rawEstado.startsWith('R') ||
-      (glosa && /rechaz/i.test(glosa))
-    ) {
-      status = 'RECH';
     } else {
       status = 'UNKNOWN';
     }
