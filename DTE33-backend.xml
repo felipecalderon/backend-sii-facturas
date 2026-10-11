@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<EnvioDTE xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sii.cl/SiiDte EnvioDTE_v10.xsd" version="1.0"><SetDTE ID="SetDoc"><Caratula version="1.0"><RutEmisor>77058146-K</RutEmisor><RutEnvia>15978960-8</RutEnvia><RutReceptor>60803000-K</RutReceptor><FchResol>2025-04-10</FchResol><NroResol>0</NroResol><TmstFirmaEnv>2026-10-08T00:49:28</TmstFirmaEnv><SubTotDTE><TpoDTE>33</TpoDTE><NroDTE>1</NroDTE></SubTotDTE></Caratula><DTE version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Documento ID="F8T33">
+    <Encabezado>
+      <IdDoc>
+        <TipoDTE>33</TipoDTE>
+        <Folio>8</Folio>
+        <FchEmis>2026-10-08</FchEmis>
+      </IdDoc>
+      <Emisor>
+        <RUTEmisor>77058146-K</RUTEmisor>
+        <RznSoc>D3SI SPA</RznSoc>
+        <GiroEmis>VENTA AL POR MAYOR DE PRODUCTOS TEXTILES, PRENDAS DE VESTIR Y CALZADO</GiroEmis>
+        <Telefono>+5698765432</Telefono>
+        <CorreoEmisor>fcalderon@araucopro.com</CorreoEmisor>
+        <Acteco>464100</Acteco>
+        <DirOrigen>Almagro</DirOrigen>
+        <CmnaOrigen>Purén</CmnaOrigen>
+        <CiudadOrigen>Purén</CiudadOrigen>
+      </Emisor>
+      <Receptor>
+        <RUTRecep>60803000-K</RUTRecep>
+        <RznSocRecep>SERVICIO DE IMPUESTOS INTERNOS</RznSocRecep>
+        <GiroRecep>GOBIERNO CENTRAL</GiroRecep>
+        <Contacto>Felipe Calderon</Contacto>
+        <CorreoRecep>fcalderon@araucopro.com</CorreoRecep>
+        <DirRecep>TEATINOS 120</DirRecep>
+        <CmnaRecep>SANTIAGO</CmnaRecep>
+        <CiudadRecep>SANTIAGO</CiudadRecep>
+      </Receptor>
+      <Totales>
+        <MntNeto>38750</MntNeto>
+        <TasaIVA>19</TasaIVA>
+        <IVA>7363</IVA>
+        <MntTotal>46113</MntTotal>
+      </Totales>
+    </Encabezado>
+    <Detalle>
+      <NroLinDet>1</NroLinDet>
+      <NmbItem>demoooooo</NmbItem>
+      <QtyItem>155</QtyItem>
+      <PrcItem>250</PrcItem>
+      <MontoItem>38750</MontoItem>
+    </Detalle>
+    <TED version="1.0">
+      <DD>
+        <RE>77058146-K</RE>
+        <TD>33</TD>
+        <F>8</F>
+        <FE>2026-10-08</FE>
+        <RR>60803000-K</RR>
+        <RSR>SERVICIO DE IMPUESTOS INTERNOS</RSR>
+        <MNT>46113</MNT>
+        <IT1>demoooooo</IT1>
+        <CAF version="1.0">
+          <DA>
+            <RE>77058146-K</RE>
+            <RS>D3SI SPA</RS>
+            <TD>33</TD>
+            <RNG>
+              <D>1</D>
+              <H>50</H>
+            </RNG>
+            <FA>2019-09-16</FA>
+            <RSAPK>
+              <M>qFN...==</M>
+              <E>Aw==</E>
+            </RSAPK>
+            <IDK>100</IDK>
+          </DA>
+          <FRMA algoritmo="SHA1withRSA">j9R...==</FRMA>
+        </CAF>
+        <TSTED>2026-10-08T00:49:27</TSTED>
+      </DD>
+      <FRMT algoritmo="SHA1withRSA">Gl...==</FRMT>
+    </TED>
+    <TmstFirma>2026-10-08T00:00:00</TmstFirma>
+  </Documento><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#F8T33"><Transforms><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>HbgxK81+ODlV0+YDbVv6QNz1k3c=</DigestValue></Reference></SignedInfo><SignatureValue>OMszK...==</SignatureValue><KeyInfo><KeyValue><RSAKeyValue><Modulus>orzT...==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue></KeyValue><X509Data><X509Certificate>MIIG3z...=</X509Certificate></X509Data></KeyInfo></Signature>
+  
+</DTE></SetDTE><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#SetDoc"><Transforms><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>N/1Adsbuu/k7HUgP83+TMwvBYUY=</DigestValue></Reference></SignedInfo><SignatureValue>EGhvp...==</SignatureValue><KeyInfo><KeyValue><RSAKeyValue><Modulus>orzT...==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue></KeyValue><X509Data><X509Certificate>MIIG3z...=</X509Certificate></X509Data></KeyInfo></Signature></EnvioDTE>
