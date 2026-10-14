@@ -69,7 +69,8 @@ describe('QueryEnvioStatusUseCase', () => {
       sendDte: vi.fn(),
       querySendStatus: vi.fn().mockResolvedValue({
         status: 'EPR',
-        glosa: 'Envio Procesado y Aceptado'
+        glosa: 'Envio Procesado y Aceptado',
+        rawResponse: '<SOAP-ENV:Envelope>respuesta completa</SOAP-ENV:Envelope>'
       })
     };
   });
@@ -91,6 +92,9 @@ describe('QueryEnvioStatusUseCase', () => {
 
     expect(result.status).toBe('EPR');
     expect(result.glosa).toBe('Envio Procesado y Aceptado');
+    expect(result.rawResponse).toBe(
+      '<SOAP-ENV:Envelope>respuesta completa</SOAP-ENV:Envelope>'
+    );
     expect(invoice.estado).toBe(InvoiceStatus.ACCEPTED);
   });
 
@@ -116,6 +120,30 @@ describe('QueryEnvioStatusUseCase', () => {
     expect(result.status).toBe('RECH');
     expect(invoice.estado).toBe(InvoiceStatus.REJECTED);
     expect(invoice.glosaRechazo).toBe('Caratula no cumple formato schema');
+  });
+
+  it('debe reconciliar a REJECTED una factura marcada ACCEPTED por una consulta previa', async () => {
+    vi.mocked(mockSiiGateway.querySendStatus).mockResolvedValue({
+      status: 'RECH'
+    });
+
+    const useCase = new QueryEnvioStatusUseCase(
+      mockAuthUseCase,
+      mockSiiGateway
+    );
+    const invoice = getSubmittedInvoice('tenant-query');
+    invoice.markAccepted();
+
+    const result = await useCase.execute({
+      tenantId: 'tenant-query',
+      trackId: '1234567890',
+      rutCompany: Rut.of('76123456-0'),
+      invoices: [invoice]
+    });
+
+    expect(result.status).toBe('RECH');
+    expect(invoice.estado).toBe(InvoiceStatus.REJECTED);
+    expect(invoice.glosaRechazo).toBe('Envío rechazado por SII');
   });
 
   it('debe mantener facturas en SUBMITTED si el SII responde REC (En proceso)', async () => {

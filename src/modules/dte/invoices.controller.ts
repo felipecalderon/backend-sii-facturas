@@ -296,6 +296,8 @@ export class InvoicesController {
 
     let siiStatus: string | undefined;
     let glosa: string | undefined;
+    let rawResponse: string | undefined;
+    let statusQueryError: string | undefined;
 
     // Si la factura tiene trackId, consultar en línea al SII para sincronizar estado
     if (invoice.trackId) {
@@ -313,8 +315,10 @@ export class InvoicesController {
 
         siiStatus = queryResult.status;
         glosa = queryResult.glosa;
+        rawResponse = queryResult.rawResponse;
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
+        statusQueryError = errorMsg;
         this.logger.warn(
           `Error al sincronizar estado SII para folio ${folio}: ${errorMsg}`
         );
@@ -328,7 +332,9 @@ export class InvoicesController {
       trackId: invoice.trackId,
       estado: invoice.estado,
       siiStatus,
-      glosa: glosa ?? invoice.glosaRechazo
+      glosa: statusQueryError ? glosa : (glosa ?? invoice.glosaRechazo),
+      rawResponse,
+      statusQueryError
     };
   }
 

@@ -1,4 +1,7 @@
-import { Invoice } from '../../domain/dte/entities/invoice.entity.js';
+import {
+  Invoice,
+  InvoiceStatus
+} from '../../domain/dte/entities/invoice.entity.js';
 import { AuthenticateSiiUseCase } from './authenticate-sii.use-case.js';
 import { SiiGateway } from '../../domain/sii/ports/sii-gateway.port.js';
 import {
@@ -23,6 +26,7 @@ export interface QueryEnvioStatusResult {
   trackId: string;
   status: SiiSendStatusEnum;
   glosa?: string;
+  rawResponse?: string;
   invoices?: Invoice[];
 }
 
@@ -75,6 +79,10 @@ export class QueryEnvioStatusUseCase {
         if (statusResult.status === 'EPR') {
           inv.markAccepted();
         } else if (statusResult.status === 'RECH') {
+          // Reconciliar ACCEPTED persistido por el antiguo mapeo de EPR a aceptación.
+          if (inv.estado === InvoiceStatus.ACCEPTED) {
+            inv.markUnknown();
+          }
           inv.markRejected(statusResult.glosa ?? 'Envío rechazado por SII');
         } else if (statusResult.status === 'UNKNOWN') {
           inv.markUnknown(
@@ -95,6 +103,7 @@ export class QueryEnvioStatusUseCase {
       trackId: dto.trackId,
       status: statusResult.status,
       glosa: statusResult.glosa,
+      rawResponse: statusResult.rawResponse,
       invoices: dto.invoices
     };
   }

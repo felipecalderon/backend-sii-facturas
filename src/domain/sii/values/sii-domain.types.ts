@@ -13,6 +13,7 @@ export interface SiiSendParams {
   rutSender: Rut;
   rutCompany: Rut;
   envioDteXml: string;
+  dteReferenceIds: string[];
 }
 
 export interface SiiSendResult {

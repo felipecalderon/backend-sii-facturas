@@ -12,10 +12,53 @@ import {
   SiiConnectionError,
   SiiSubmissionError
 } from '../../domain/sii/errors/sii-domain.error.js';
+import { FiscalValidationError } from '../../domain/dte/errors/fiscal-domain.error.js';
 import {
   findNonLatin1CodePoint,
   formatUnicodeCodePoint
 } from '../xml/xml-encoding.js';
+import { DteSigner } from '../crypto/dte-signer.js';
+import { EnvioDteBuilder } from '../xml/envio-dte-builder.js';
+
+const describeFetchError = (error: unknown): string => {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  const cause = (error as Error & { cause?: unknown }).cause;
+  if (cause === undefined) {
+    return error.message;
+  }
+
+  const causeMessage = cause instanceof Error ? cause.message : String(cause);
+  const causeCode =
+    typeof cause === 'object' && cause !== null && 'code' in cause
+      ? cause.code
+      : undefined;
+  const code = typeof causeCode === 'string' ? `${causeCode}: ` : '';
+  return `${error.message}; causa: ${code}${causeMessage}`;
+};
+
+const extractXmlTagValue = (
+  xml: string,
+  tagName: string
+): string | undefined => {
+  const qualifiedName = `(?:[A-Za-z_][\\w.-]*:)?${tagName}`;
+  const unescapedMatch = xml.match(
+    new RegExp(`<${qualifiedName}>([\\s\\S]*?)<\\/${qualifiedName}>`, 'i')
+  );
+  if (unescapedMatch) {
+    return unescapedMatch[1].trim();
+  }
+
+  const escapedMatch = xml.match(
+    new RegExp(
+      `&lt;${qualifiedName}&gt;([\\s\\S]*?)&lt;\\/${qualifiedName}&gt;`,
+      'i'
+    )
+  );
+  return escapedMatch?.[1].trim();
+};
 
 export interface SiiHttpGatewayOptions {
   timeoutMs?: number;
@@ -117,6 +160,31 @@ export class SiiHttpGateway implements SiiGateway {
 
     // El SII exige el archivo codificado en ISO-8859-1 (latin1).
     const xmlBuffer = Buffer.from(params.envioDteXml, 'latin1');
+    const transmittedXml = xmlBuffer.toString('latin1');
+    if (transmittedXml !== params.envioDteXml) {
+      throw new FiscalValidationError(
+        'La serialización ISO-8859-1 alteró el XML EnvioDTE antes de transmitirlo'
+      );
+    }
+
+    if (!params.dteReferenceIds || params.dteReferenceIds.length === 0) {
+      throw new FiscalValidationError(
+        'El EnvioDTE debe incluir al menos una referencia DTE para validar su firma'
+      );
+    }
+    for (const referenceId of params.dteReferenceIds) {
+      if (!DteSigner.verify(transmittedXml, referenceId)) {
+        throw new FiscalValidationError(
+          `La firma del DTE ${referenceId} no es válida en el XML serializado que se enviará al SII`
+        );
+      }
+    }
+    if (!EnvioDteBuilder.verify(transmittedXml)) {
+      throw new FiscalValidationError(
+        'La firma XMLDSig de SetDTE no es válida en el XML serializado que se enviará al SII'
+      );
+    }
+
     const blob = new Blob([xmlBuffer], { type: 'text/xml' });
     formData.append('archivo', blob, 'envio.xml');
 
@@ -133,9 +201,8 @@ export class SiiHttpGateway implements SiiGateway {
         signal: AbortSignal.timeout(this.timeoutMs)
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
       throw new SiiConnectionError(
-        `Fallo de conexión al enviar DTE a ${url}: ${message}`
+        `Fallo de conexión al enviar DTE a ${url}: ${describeFetchError(err)}`
       );
     }
 
@@ -183,40 +250,43 @@ export class SiiHttpGateway implements SiiGateway {
 
     const responseText = await this.postSoap(url, soapEnvelope, 'getEstUp');
 
-    const estadoMatch =
-      responseText.match(
-        /<ESTADO(?:_ENVIO)?>([A-Za-z0-9_-]+)<\/ESTADO(?:_ENVIO)?>/i
-      ) ||
-      responseText.match(
-        /&lt;ESTADO(?:_ENVIO)?&gt;([A-Za-z0-9_-]+)&lt;\/ESTADO(?:_ENVIO)?&gt;/i
-      );
-
-    const glosaMatch =
-      responseText.match(/<GLOSA>([\s\S]*?)<\/GLOSA>/i) ||
-      responseText.match(/&lt;GLOSA&gt;([\s\S]*?)&lt;\/GLOSA&gt;/i);
-
-    const rawEstado = estadoMatch ? estadoMatch[1].toUpperCase() : 'UNKNOWN';
-    const glosa = glosaMatch ? glosaMatch[1].trim() : undefined;
+    const rawEstado = (
+      extractXmlTagValue(responseText, 'ESTADO') ??
+      extractXmlTagValue(responseText, 'ESTADO_ENVIO') ??
+      'UNKNOWN'
+    ).toUpperCase();
+    let glosa = extractXmlTagValue(responseText, 'GLOSA');
+    const acceptedCount = Number(extractXmlTagValue(responseText, 'ACEPTADOS'));
+    const rejectedCount = Number(
+      extractXmlTagValue(responseText, 'RECHAZADOS') ??
+        extractXmlTagValue(responseText, 'NUM_DOC_RECHAZADOS')
+    );
+    const hasAcceptedDocuments =
+      Number.isFinite(acceptedCount) && acceptedCount > 0;
+    const hasRejectedDocuments =
+      Number.isFinite(rejectedCount) && rejectedCount > 0;
 
     let status: SiiSendStatusEnum;
-    const hasRejection =
-      (glosa && /rechaz/i.test(glosa)) ||
-      /RFR|RECH|RCH/i.test(rawEstado) ||
-      /<NUM_DOC_RECHAZADOS>[1-9]\d*<\/NUM_DOC_RECHAZADOS>/i.test(
-        responseText
-      ) ||
-      /&lt;NUM_DOC_RECHAZADOS&gt;[1-9]\d*&lt;\/NUM_DOC_RECHAZADOS&gt;/i.test(
-        responseText
-      );
+    const hasRejectionIndicator =
+      (!!glosa && /rechaz/i.test(glosa)) || /RFR|RECH|RCH/i.test(rawEstado);
 
-    if (hasRejection) {
+    if (hasAcceptedDocuments && hasRejectedDocuments) {
+      // El estado del envío no permite asignar un resultado agregado a cada DTE.
+      status = 'UNKNOWN';
+    } else if (hasRejectedDocuments || hasRejectionIndicator) {
       status = 'RECH';
     } else if (rawEstado === 'EPR') {
-      status = 'EPR';
+      // EPR solo indica que el envío se procesó; no prueba que algún DTE se aceptara.
+      status = hasAcceptedDocuments ? 'EPR' : 'UNKNOWN';
     } else if (rawEstado === 'REC') {
       status = 'REC';
     } else {
       status = 'UNKNOWN';
+    }
+
+    if (status === 'RECH' && glosa && /^env[ií]o procesado$/i.test(glosa)) {
+      // Esta glosa describe el procesamiento del envío, no el motivo del rechazo.
+      glosa = undefined;
     }
 
     return {
@@ -243,9 +313,8 @@ export class SiiHttpGateway implements SiiGateway {
         signal: AbortSignal.timeout(this.timeoutMs)
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
       throw new SiiConnectionError(
-        `Fallo de conexión SOAP con ${url}: ${message}`
+        `Fallo de conexión SOAP con ${url}: ${describeFetchError(err)}`
       );
     }
 

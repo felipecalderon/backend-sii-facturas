@@ -27,7 +27,8 @@ export class InvoiceStatusResponseDto {
   trackId?: string;
 
   @ApiProperty({
-    description: 'Estado fiscal actual registrado en el sistema',
+    description:
+      'Último estado fiscal persistido; statusQueryError indica que no pudo confirmarse en esta consulta',
     enum: InvoiceStatus,
     example: InvoiceStatus.ACCEPTED
   })
@@ -46,4 +47,17 @@ export class InvoiceStatusResponseDto {
     example: 'Envio Recibido Conforme'
   })
   glosa?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Error de la consulta en línea al SII; si está presente, siiStatus y rawResponse no son actuales'
+  })
+  statusQueryError?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Respuesta SOAP nativa recibida del SII al consultar el estado del envío',
+    example: '<SOAP-ENV:Envelope>...</SOAP-ENV:Envelope>'
+  })
+  rawResponse?: string;
 }

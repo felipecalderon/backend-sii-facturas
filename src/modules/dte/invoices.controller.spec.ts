@@ -300,7 +300,8 @@ describe('InvoicesController', () => {
       vi.mocked(queryEnvioStatusUseCaseMock.execute!).mockResolvedValue({
         trackId: 'track-12345',
         status: 'EPR',
-        glosa: 'Envio Recibido Conforme'
+        glosa: 'Envio Recibido Conforme',
+        rawResponse: '<SOAP-ENV:Envelope>respuesta completa</SOAP-ENV:Envelope>'
       });
 
       const result = await controller.getInvoiceStatus('tenant-1', 105);
@@ -309,12 +310,41 @@ describe('InvoicesController', () => {
       expect(result.trackId).toBe('track-12345');
       expect(result.siiStatus).toBe('EPR');
       expect(result.glosa).toBe('Envio Recibido Conforme');
+      expect(result.rawResponse).toBe(
+        '<SOAP-ENV:Envelope>respuesta completa</SOAP-ENV:Envelope>'
+      );
       expect(queryEnvioStatusUseCaseMock.execute).toHaveBeenCalledWith(
         expect.objectContaining({
           tenantId: 'tenant-1',
           trackId: 'track-12345'
         })
       );
+    });
+
+    it('debe separar el fallo de consulta de la glosa persistida y del estado almacenado', async () => {
+      const invoice = {
+        folio: 14,
+        tipoDte: { code: 33 },
+        emisor: { rut: Rut.of('76123456-0') },
+        trackId: '0262416160',
+        estado: InvoiceStatus.ACCEPTED,
+        glosaRechazo: 'Error SII: Fallo de conexión al enviar DTE: fetch failed'
+      } as unknown as Invoice;
+
+      vi.mocked(invoiceRepositoryMock.findByFolio!).mockResolvedValue(invoice);
+      vi.mocked(queryEnvioStatusUseCaseMock.execute!).mockRejectedValue(
+        new Error(
+          'Error SII: Fallo de conexión SOAP con QueryEstUp: fetch failed'
+        )
+      );
+
+      const result = await controller.getInvoiceStatus('tenant-1', 14);
+
+      expect(result.estado).toBe(InvoiceStatus.ACCEPTED);
+      expect(result.siiStatus).toBeUndefined();
+      expect(result.glosa).toBeUndefined();
+      expect(result.rawResponse).toBeUndefined();
+      expect(result.statusQueryError).toContain('QueryEstUp');
     });
   });
 

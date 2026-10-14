@@ -123,7 +123,8 @@ export class SubmitEnvioDteUseCase {
         token: auth.token,
         rutSender: dto.rutSender,
         rutCompany,
-        envioDteXml: dto.envioDteXml
+        envioDteXml: dto.envioDteXml,
+        dteReferenceIds: referenceIds
       });
 
       // 3. Transicionar facturas a SUBMITTED

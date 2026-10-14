@@ -112,7 +112,7 @@ describe('SignDteUseCase', () => {
     expect(result.signedDteXml).toContain(
       '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">'
     );
-    expect(result.signedDteXml).toContain('<KeyValue><RSAKeyValue>');
+    expect(result.signedDteXml).toMatch(/<KeyValue>\s*<RSAKeyValue>/);
   });
 
   it('debe lanzar TenantMismatchError si el tenantId no coincide', async () => {

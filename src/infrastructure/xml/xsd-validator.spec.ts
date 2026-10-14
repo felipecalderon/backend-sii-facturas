@@ -4,12 +4,23 @@ import path from 'node:path';
 import { XsdValidator } from './xsd-validator.js';
 
 describe('XsdValidator', () => {
-  // El fixture usa valores Base64 de prueba en X509Certificate; aquí solo se valida XSD.
+  // El ejemplo oficial abrevia algunos valores Base64; aquí solo se valida XSD.
+  const readSanitizedExampleXml = (): string =>
+    fs
+      .readFileSync(path.resolve(process.cwd(), 'DTE33-ejemplo.xml'), 'utf-8')
+      .replace(
+        /<(SignatureValue|Modulus|Exponent|X509Certificate)>([\s\S]*?)<\/\1>/g,
+        (element, name: string, value: string) => {
+          const base64 = value.replace(/\s+/g, '');
+          const isValidBase64 =
+            /^[A-Za-z0-9+/]*={0,2}$/.test(base64) && base64.length % 4 === 0;
+
+          return isValidBase64 ? element : `<${name}>AA==</${name}>`;
+        }
+      );
+
   it('debe validar exitosamente un nodo <DTE> extraído del ejemplo oficial del SII', async () => {
-    const ejemploXml = fs.readFileSync(
-      path.resolve(process.cwd(), 'docs/schemas-sii/F60T33-ejemplo.xml'),
-      'utf-8'
-    );
+    const ejemploXml = readSanitizedExampleXml();
 
     // Extraer el fragmento <DTE>...</DTE> del ejemplo
     const dteMatch = ejemploXml.match(/<DTE[\s\S]*?<\/DTE>/);
@@ -40,10 +51,7 @@ describe('XsdValidator', () => {
   });
 
   it('debe validar exitosamente el sobre <EnvioDTE> del ejemplo oficial del SII', async () => {
-    const envioXml = fs.readFileSync(
-      path.resolve(process.cwd(), 'docs/schemas-sii/F60T33-ejemplo.xml'),
-      'utf-8'
-    );
+    const envioXml = readSanitizedExampleXml();
 
     const result = await XsdValidator.validateEnvioDte(envioXml);
     expect(result.errors).toEqual([]);
@@ -51,10 +59,7 @@ describe('XsdValidator', () => {
   });
 
   it('debe rechazar como EnvioDTE un <DTE> suelto sin sobre, aunque el DTE sea válido', async () => {
-    const ejemploXml = fs.readFileSync(
-      path.resolve(process.cwd(), 'docs/schemas-sii/F60T33-ejemplo.xml'),
-      'utf-8'
-    );
+    const ejemploXml = readSanitizedExampleXml();
 
     // Extraer el fragmento <DTE>...</DTE> del ejemplo (documento válido por sí solo)
     const dteMatch = ejemploXml.match(/<DTE[\s\S]*?<\/DTE>/);

@@ -121,6 +121,9 @@ describe('SubmitEnvioDteUseCase', () => {
     );
     expect(DteSigner.verify).toHaveBeenCalledWith(validEnvioDteXml, 'F55T33');
     expect(EnvioDteBuilder.verify).toHaveBeenCalledWith(validEnvioDteXml);
+    expect(mockSiiGateway.sendDte).toHaveBeenCalledWith(
+      expect.objectContaining({ dteReferenceIds: ['F55T33'] })
+    );
   });
 
   it('debe bloquear el envío si falla la validación XSD', async () => {
